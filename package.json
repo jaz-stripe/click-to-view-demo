@@ -1,0 +1,32 @@
+{
+  "name": "click-to-view-demo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "build": "next build",
+    "start": "NODE_ENV=production node server.js",
+    "generate-cert": "node create-cert.js"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "sqlite3": "latest",
+    "better-sqlite3": "latest",
+    "devcert": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/node": "latest",
+    "@types/better-sqlite3": "latest",
+    "typescript": "latest"
+  },
+ "scripts": {
+  "dev": "node server.js",
+  "build": "next build",
+  "start": "NODE_ENV=production node server.js",
+  "generate-cert": "node create-cert.js"
+ }
+}
+
