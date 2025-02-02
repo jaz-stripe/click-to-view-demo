@@ -1,18 +1,29 @@
-import Database from 'better-sqlite3';
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
 
-const db = new Database('./mydb.sqlite', { verbose: console.log });
+let db: any;
 
-// Initialize the database with tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE,
-    password TEXT,
-    firstName TEXT,
-    lastName TEXT,
-    birthYear INTEGER
-  )
-`);
+async function initializeDb() {
+  db = await open({
+    filename: './mydb.sqlite',
+    driver: sqlite3.Database
+  });
 
-export default db;
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      firstName TEXT,
+      lastName TEXT,
+      email TEXT UNIQUE,
+      password TEXT,
+      emoji TEXT
+    )
+  `);
+}
 
+initializeDb();
+
+export async function getDb() {
+  if (!db) await initializeDb();
+  return db;
+}
