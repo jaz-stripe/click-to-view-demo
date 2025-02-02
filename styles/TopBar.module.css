@@ -11,19 +11,46 @@
     z-index: 1000;
   }
   
+  .leftSection {
+    display: flex;
+    align-items: center;
+  }
+  
   .logoContainer {
     width: 100px;
+    margin-right: 2rem;
+  }
+  
+  .navigation {
+    display: flex;
+    align-items: center;
+  }
+  
+  .navItem {
+    color: #a0a0a0; /* Light grey for non-active items */
+    text-decoration: none;
+    margin-right: 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: color 0.3s ease;
+  }
+  
+  .navItem:hover {
+    color: #ffffff; /* White on hover */
+  }
+  
+  .navItem.active {
+    color: #ffffff; /* White for active item */
+    font-weight: 700;
+  }
+  
+  .premium {
+    color: #ffd700; /* Keep Premium gold */
   }
   
   .rightSection {
     display: flex;
     align-items: center;
-  }
-  
-  .searchIcon {
-    font-size: 1.5rem;
-    margin-right: 1rem;
-    cursor: pointer;
   }
   
   .userMenu {

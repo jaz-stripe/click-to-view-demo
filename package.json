@@ -9,13 +9,18 @@
     "generate-cert": "node create-cert.js"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.5.1",
+    "@stripe/stripe-js": "^5.6.0",
     "better-sqlite3": "latest",
     "devcert": "latest",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "react-redux": "^9.2.0",
+    "redux": "^5.0.1",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "stripe": "^17.6.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "latest",

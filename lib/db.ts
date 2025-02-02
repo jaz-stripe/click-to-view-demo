@@ -16,8 +16,10 @@ async function initializeDb() {
       lastName TEXT,
       email TEXT UNIQUE,
       password TEXT,
-      emoji TEXT
-    )
+      emoji TEXT,
+      stripeCustomerId TEXT,
+      hasPaymentMethod BOOLEAN DEFAULT 0
+    );
   `);
 }
 

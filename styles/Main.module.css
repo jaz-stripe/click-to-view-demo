@@ -5,65 +5,62 @@
 }
 
 .main {
-  padding: 6rem 2rem 2rem; /* Increased top padding to account for fixed header */
-  min-height: 100vh;
+  padding: 8rem 2rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background-color: rgba(0, 0, 0, 0.8);
+.title {
+  font-size: 3rem;
+  text-align: center;
+  margin-bottom: 2rem;
 }
 
-.logoContainer {
-  width: 100px;
+.description {
+  text-align: center;
+  font-size: 1.2rem;
+  margin-bottom: 3rem;
 }
 
-.rightSection {
-  display: flex;
-  align-items: center;
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
 }
 
-.searchIcon {
-  font-size: 1.5rem;
-  margin-right: 1rem;
-  cursor: pointer;
+.card {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1.5rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.3s ease;
 }
 
-.userMenu {
-  position: relative;
+.card:hover {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
-.avatarButton {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
+.card h2 {
+  margin-bottom: 0.5rem;
 }
 
-.dropdown {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  background-color: #333;
-  border-radius: 4px;
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  min-width: 150px;
+.paymentPrompt {
+  margin-top: 3rem;
+  text-align: center;
 }
 
-.dropdown button {
-  background: none;
-  border: none;
+.addPaymentButton {
+  background-color: #0095cf;
   color: white;
-  padding: 0.5rem;
-  text-align: left;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  font-size: 1rem;
   cursor: pointer;
+  margin-top: 1rem;
 }
 
-.dropdown button:hover {
-  background-color: #555;
+.addPaymentButton:hover {
+  background-color: #0077a3;
 }

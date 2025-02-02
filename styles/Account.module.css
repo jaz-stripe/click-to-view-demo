@@ -1,0 +1,139 @@
+.container {
+    min-height: 100vh;
+    background: linear-gradient(to bottom right, #192263, #712E69);
+    color: #ffffff;
+  }
+  
+  .main {
+    padding: 8rem 2rem 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .accountBox {
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    padding: 2rem;
+  }
+  
+  .title {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .field {
+    margin-bottom: 1.5rem;
+  }
+  
+  .field label {
+    display: block;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .field p {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .changeButton {
+    background: none;
+    border: none;
+    color: #0095cf;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0;
+  }
+  
+  .buttonRow {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+  }
+  
+  .doneButton, .paymentButton {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  
+  .doneButton {
+    background-color: #0095cf;
+    color: white;
+  }
+  
+  .paymentButton {
+    background-color: #e50914;
+    color: white;
+  }
+  
+  .paymentButton.manage {
+    background-color: #4CAF50;
+  }
+  
+  /* Modal styles */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modalContent {
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 10px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 2px solid #4CAF50;
+  }
+  
+  .modalText {
+    color: #333;
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+  }
+  
+  .modalButtons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+  }
+  
+  .acceptButton, .declineButton {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+  }
+  
+  .acceptButton {
+    background-color: #4CAF50;
+    color: white;
+  }
+  
+  .acceptButton:hover {
+    background-color: #45a049;
+  }
+  
+  .declineButton {
+    background-color: #f44336;
+    color: white;
+  }
+  
+  .declineButton:hover {
+    background-color: #d32f2f;
+  }
+  

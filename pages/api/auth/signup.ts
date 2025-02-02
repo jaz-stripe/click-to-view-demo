@@ -8,14 +8,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const db = await getDb()
       await db.run(
-        'INSERT INTO users (firstName, lastName, email, password, emoji) VALUES (?, ?, ?, ?, ?)',
-        [firstName, lastName, email, password, emoji]
+        'INSERT INTO users (firstName, lastName, email, password, emoji, stripeCustomerId, hasPaymentMethod) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [firstName, lastName, email, password, emoji, null, false]
       )
       
       res.setHeader('Set-Cookie', `userEmail=${email}; Path=/; HttpOnly`);
       
       res.status(200).json({ success: true, message: 'User registered and logged in successfully', email })
     } catch (error) {
+      console.error('Error registering user:', error);
       res.status(500).json({ success: false, message: 'Error registering user' })
     }
   } else {
