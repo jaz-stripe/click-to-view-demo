@@ -26,6 +26,8 @@ Setup and run as:
 1. Ensure your (test) Stripe keys are in the file `.env.local`
 2. Install the components as `npm install`
 3. Generate the SSL certs as `npm run generate-cert`
-4. Run the Stripe CLI to forward all webhooks as `stripe listen --skip-verify --forward-to https://localhost:3000/api/webhooks`
-5. Ensure you update `.env.local` to include the webhook signing secret and your Stripe account details.
-5. Run the demo locally as `npm run dev`
+4. Auth to your test account with the Stripe CLI as `stripe login`
+5. Run the Stripe CLI to forward all webhooks as `stripe listen --skip-verify --forward-to https://localhost:3000/api/webhooks`
+6. Ensure you update `.env.local` to include the webhook signing secret and your Stripe account details.
+7. Populate the DB with videos and create Stripe objects required as `npx ts-node scripts/populate_database.ts`
+8. Run the demo locally as `npm run dev`

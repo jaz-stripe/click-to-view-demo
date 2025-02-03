@@ -10,15 +10,26 @@ async function initializeDb() {
   });
 
   await db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS videos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      firstName TEXT,
-      lastName TEXT,
-      email TEXT UNIQUE,
-      password TEXT,
-      emoji TEXT,
-      stripeCustomerId TEXT,
-      hasPaymentMethod BOOLEAN DEFAULT 0
+      title TEXT NOT NULL,
+      youtube_id TEXT NOT NULL,
+      is_premium BOOLEAN NOT NULL,
+      stripe_product_id TEXT,
+      type TEXT,
+      series TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS series (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      stripe_product_id TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS modules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      stripe_product_id TEXT NOT NULL
     );
   `);
 }
