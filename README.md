@@ -26,6 +26,6 @@ Setup and run as:
 1. Ensure your (test) Stripe keys are in the file `.env.local`
 2. Install the components as `npm install`
 3. Generate the SSL certs as `npm run generate-cert`
-4. Run the Stripe CLI to forward all webhooks as `stripe listen --forward-to localhost:3000/api/webhooks`
+4. Run the Stripe CLI to forward all webhooks as `stripe listen --skip-verify --forward-to https://localhost:3000/api/webhooks`
 5. Ensure you update `.env.local` to include the webhook signing secret and your Stripe account details.
 5. Run the demo locally as `npm run dev`
