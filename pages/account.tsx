@@ -11,23 +11,26 @@ export default function Account() {
   const dispatch = useDispatch();
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const { session_id } = router.query;
-    if (session_id) {
-      verifyPaymentMethod();
-    }
-  }, [router.query]);
+    verifyPaymentMethod();
+  }, []);
 
   const verifyPaymentMethod = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch('/api/verify-payment-method');
       const data = await response.json();
       if (data.hasPaymentMethod) {
         dispatch(setHasPaymentMethod(true));
+      } else {
+        dispatch(setHasPaymentMethod(false));
       }
     } catch (error) {
       console.error('Error verifying payment method:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -35,9 +38,21 @@ export default function Account() {
     setIsModalOpen(true);
   };
 
-  const handleManagePayments = () => {
-    // Implement logic to redirect to Stripe Customer Portal or your custom management page
-    console.log('Redirecting to payment management...');
+  const handleManagePayments = async () => {
+    try {
+      const response = await fetch('/api/create-portal-session', { method: 'POST' });
+      const data = await response.json();
+      
+      if (response.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error('Failed to create portal session:', data);
+        alert('Failed to open payment management. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating portal session:', error);
+      alert('An error occurred. Please try again.');
+    }
   };
 
   const handleModalAccept = async () => {
@@ -65,6 +80,10 @@ export default function Account() {
   const handleDone = () => {
     router.push('/main');
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className={styles.container}>

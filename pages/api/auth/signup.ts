@@ -5,6 +5,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'POST') {
     const { firstName, lastName, email, password, emoji } = req.body
 
+    // Make sure email is being passed from the frontend, not constructed here
+
     try {
       const db = await getDb()
       await db.run(

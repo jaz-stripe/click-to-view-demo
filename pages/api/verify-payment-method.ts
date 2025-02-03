@@ -18,17 +18,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'User not found' });
       }
 
-      if (user.stripeCustomerId) {
-        const hasPaymentMethod = await hasValidPaymentMethod(user.stripeCustomerId);
-        
-        if (hasPaymentMethod) {
-          await db.run('UPDATE users SET hasPaymentMethod = ? WHERE email = ?', [true, userEmail]);
-        }
+      let hasPaymentMethod = false;
 
-        return res.status(200).json({ hasPaymentMethod });
+      if (user.stripeCustomerId) {
+        hasPaymentMethod = await hasValidPaymentMethod(user.stripeCustomerId);
+        
+        // Update the database if the status has changed
+        if (hasPaymentMethod !== user.hasPaymentMethod) {
+          await db.run('UPDATE users SET hasPaymentMethod = ? WHERE email = ?', [hasPaymentMethod, userEmail]);
+        }
       }
 
-      res.status(200).json({ hasPaymentMethod: false });
+      res.status(200).json({ hasPaymentMethod });
     } catch (error) {
       console.error('Error verifying payment method:', error);
       res.status(500).json({ error: 'Error verifying payment method' });

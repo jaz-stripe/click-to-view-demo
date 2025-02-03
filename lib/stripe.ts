@@ -45,5 +45,5 @@ export async function hasValidPaymentMethod(customerId: string) {
       console.error('Error checking for valid payment method:', error);
       return false;
     }
-  }
+  }  
   

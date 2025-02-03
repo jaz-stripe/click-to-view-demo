@@ -19,9 +19,11 @@ export default function Signup() {
     setLastName(randomKiwi.lastName);
     setEmoji(randomKiwi.emoji);
     
-    const baseEmail = process.env.NEXT_PUBLIC_DEFAULT_EMAIL || 'demo@example.com';
-    const [user, domain] = baseEmail.split('@');
-    setEmail(`${user}+${randomKiwi.firstName.toLowerCase()}@${domain}`);
+    const baseEmail = process.env.NEXT_PUBLIC_DEFAULT_EMAIL || '';
+    if (baseEmail) {
+      const [localPart, domain] = baseEmail.split('@');
+      setEmail(`${localPart}+${randomKiwi.firstName.toLowerCase()}@${domain}`);
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

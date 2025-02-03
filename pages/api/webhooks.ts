@@ -23,15 +23,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET!);
     } catch (err: any) {
-      res.status(400).send(`Webhook Error: ${err.message}`);
-      return;
+      console.error(`Webhook Error: ${err.message}`);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    if (event.type === 'setup_intent.succeeded') {
-      const setupIntent = event.data.object as Stripe.SetupIntent;
-      await updateUserPaymentStatus(setupIntent.customer as string);
+    // Handle the event
+    switch (event.type) {
+      case 'payment_method.attached':
+        const paymentMethod = event.data.object as Stripe.PaymentMethod;
+        await handlePaymentMethodAttached(paymentMethod);
+        break;
+      case 'payment_method.detached':
+        const detachedPaymentMethod = event.data.object as Stripe.PaymentMethod;
+        await handlePaymentMethodDetached(detachedPaymentMethod);
+        break;
+      // ... handle other event types
+      default:
+        console.log(`Unhandled event type ${event.type}`);
     }
 
+    // Return a response to acknowledge receipt of the event
     res.json({ received: true });
   } else {
     res.setHeader('Allow', 'POST');
@@ -39,8 +50,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-async function updateUserPaymentStatus(stripeCustomerId: string) {
+async function handlePaymentMethodAttached(paymentMethod: Stripe.PaymentMethod) {
   const db = await getDb();
-  await db.run('UPDATE users SET hasPaymentMethod = ? WHERE stripeCustomerId = ?', [true, stripeCustomerId]);
-  console.log(`Updated payment status for customer ${stripeCustomerId}`);
+  await db.run('UPDATE users SET hasPaymentMethod = ? WHERE stripeCustomerId = ?', [true, paymentMethod.customer]);
+  console.log(`Payment method attached for customer: ${paymentMethod.customer}`);
+}
+
+async function handlePaymentMethodDetached(paymentMethod: Stripe.PaymentMethod) {
+  const db = await getDb();
+  // Check if the customer has any remaining payment methods
+  const remainingPaymentMethods = await stripe.paymentMethods.list({
+    customer: paymentMethod.customer as string,
+    type: 'card',
+  });
+
+  if (remainingPaymentMethods.data.length === 0) {
+    await db.run('UPDATE users SET hasPaymentMethod = ? WHERE stripeCustomerId = ?', [false, paymentMethod.customer]);
+    console.log(`All payment methods removed for customer: ${paymentMethod.customer}`);
+  }
 }
