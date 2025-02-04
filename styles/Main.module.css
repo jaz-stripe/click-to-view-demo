@@ -5,62 +5,116 @@
 }
 
 .main {
-  padding: 8rem 2rem 2rem;
+  padding: 7rem 2rem 2rem; /* Increased top padding to prevent content from going under the top bar */
   max-width: 1200px;
   margin: 0 auto;
 }
 
-.title {
-  font-size: 3rem;
-  text-align: center;
+.videoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
-.description {
-  text-align: center;
-  font-size: 1.2rem;
-  margin-bottom: 3rem;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 2rem;
-}
-
-.card {
+.videoCard {
   background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 1.5rem;
-  text-decoration: none;
-  color: inherit;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
   transition: background-color 0.3s ease;
 }
 
-.card:hover {
+.videoCard:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-.card h2 {
-  margin-bottom: 0.5rem;
+.videoCard h3 {
+  margin: 0;
+  font-size: 1rem; /* Reduced font size for video titles */
+}
+
+.premiumBadge {
+  display: inline-block;
+  background-color: #0095cf; /* Changed to blue */
+  color: white;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
 }
 
 .paymentPrompt {
-  margin-top: 3rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 2rem;
   text-align: center;
 }
 
 .addPaymentButton {
-  background-color: #0095cf;
+  background-color: #e50914;
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 50px;
-  font-size: 1rem;
-  cursor: pointer;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
   margin-top: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
 .addPaymentButton:hover {
+  background-color: #f40612;
+}
+
+.purchasedBadge {
+  display: inline-block;
+  background-color: #4CAF50;
+  color: white;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+.paymentMethodInfo {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.purchaseOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.purchaseOption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+}
+
+.optionText {
+  flex-grow: 1;
+  margin-right: 1rem;
+}
+
+.purchaseButton {
+  background-color: #0095cf;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.purchaseButton:hover {
   background-color: #0077a3;
 }

@@ -18,22 +18,16 @@ export async function createStripeCustomer(email: string) {
   }
 }
 
-export async function createCheckoutSession(customerId: string) {
-  try {
-    const session = await stripe.checkout.sessions.create({
+export async function createCheckoutSession(customerId: string, returnUrl: string) {
+    return stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       mode: 'setup',
-      success_url: `${BASE_URL}/account?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${BASE_URL}/account`,
+      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${returnUrl}`,
     });
-    console.log('Stripe Operation: Create Checkout Session', session);
-    return session;
-  } catch (error) {
-    console.error('Error creating Stripe checkout session:', error);
-    throw error;
   }
-}
+  
 
 export async function hasValidPaymentMethod(customerId: string) {
     try {
@@ -134,4 +128,37 @@ function parseTier(tier: string): { amount: number, duration: number | null } {
       };
     }
     return { amount: Math.round(parseFloat(tier) * 100), duration: null };
+  }
+
+  export async function createOrRetrieveSubscription(customerId: string) {
+    const subscriptions = await stripe.subscriptions.list({ customer: customerId });
+    if (subscriptions.data.length > 0) {
+      return subscriptions.data[0];
+    }
+  
+    // Set the billing cycle anchor to the last day of the current month
+    const now = new Date();
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  
+    return stripe.subscriptions.create({
+      customer: customerId,
+      items: [],
+      billing_cycle_anchor: Math.floor(lastDayOfMonth.getTime() / 1000),
+      proration_behavior: 'create_prorations',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
+      expand: ['latest_invoice.payment_intent'],
+    });
+  }
+  
+  export async function addItemToSubscription(subscriptionId: string, priceId: string) {
+    return stripe.subscriptionItems.create({
+      subscription: subscriptionId,
+      price: priceId,
+      quantity: 1,
+      proration_behavior: 'create_prorations',
+    });
+  }
+  
+  export async function retrieveSubscription(subscriptionId: string) {
+    return stripe.subscriptions.retrieve(subscriptionId);
   }

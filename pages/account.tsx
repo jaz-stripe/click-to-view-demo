@@ -58,18 +58,17 @@ export default function Account() {
   const handleModalAccept = async () => {
     setIsModalOpen(false);
     try {
-      const response = await fetch('/api/create-checkout-session', { method: 'POST' });
-      const data = await response.json();
-      
-      if (response.ok && data.url) {
-        window.location.href = data.url;
-      } else {
-        console.error('Failed to create checkout session:', data);
-        alert('Failed to create checkout session. Please try again.');
-      }
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          returnUrl: `${window.location.origin}`
+        }),
+      });
+      const session = await response.json();
+      router.push(session.url);
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      alert('An error occurred. Please try again.');
     }
   };
 
@@ -116,7 +115,7 @@ export default function Account() {
         <div className={styles.modal}>
           <div className={styles.modalContent}>
             <p className={styles.modalText}>
-              We are redirecting you input, validate and store your payment details. Managing your payment methods, purchases and invoices will be easy via the "Manage my payments" portal here. You will be billed monthly for your usage of TVNZ+ premium content.
+              We are redirecting you to input, validate and store your payment details. Managing your payment methods, purchases and invoices will be easy via the "Manage my payments" portal here. You will be billed monthly for your usage of TVNZ+ premium content.
             </p>
             <div className={styles.modalButtons}>
               <button className={styles.acceptButton} onClick={handleModalAccept}>Accept</button>
