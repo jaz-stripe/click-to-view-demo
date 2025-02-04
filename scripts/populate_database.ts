@@ -55,7 +55,7 @@ async function createStripeProduct(content: any, videoId: number) {
   });
 
   const tierPrice = parseTier(content.tier);
-  await stripe.prices.create({
+  const price = await stripe.prices.create({
     product: product.id,
     unit_amount: tierPrice.amount,
     currency: 'nzd',
@@ -65,7 +65,7 @@ async function createStripeProduct(content: any, videoId: number) {
     },
   });
 
-  return product;
+  return { product, price };
 }
 
 async function getOrCreateSeriesProduct(db: any, series: string, type: string) {
@@ -77,7 +77,7 @@ async function getOrCreateSeriesProduct(db: any, series: string, type: string) {
       metadata: { series: series, type: type },
     });
 
-    await stripe.prices.create({
+    const price = await stripe.prices.create({
       product: product.id,
       unit_amount: SERIES_PRICE,
       currency: 'nzd',
@@ -85,11 +85,11 @@ async function getOrCreateSeriesProduct(db: any, series: string, type: string) {
     });
 
     const { lastID } = await db.run(
-      'INSERT INTO series (name, stripe_product_id) VALUES (?, ?)',
-      [series, product.id]
+      'INSERT INTO series (name, stripe_product_id, stripe_price_id) VALUES (?, ?, ?)',
+      [series, product.id, price.id]
     );
 
-    seriesProduct = { id: lastID, name: series, stripe_product_id: product.id };
+    seriesProduct = { id: lastID, name: series, stripe_product_id: product.id, stripe_price_id: price.id };
   }
 
   return seriesProduct;
@@ -104,7 +104,7 @@ async function getOrCreateModuleProduct(db: any, type: string) {
       metadata: { type: type, isModule: 'true' },
     });
 
-    await stripe.prices.create({
+    const price = await stripe.prices.create({
       product: product.id,
       unit_amount: MODULE_PRICE,
       currency: 'nzd',
@@ -113,11 +113,11 @@ async function getOrCreateModuleProduct(db: any, type: string) {
     });
 
     const { lastID } = await db.run(
-      'INSERT INTO modules (name, stripe_product_id) VALUES (?, ?)',
-      [type, product.id]
+      'INSERT INTO modules (name, stripe_product_id, stripe_price_id) VALUES (?, ?, ?)',
+      [type, product.id, price.id]
     );
 
-    moduleProduct = { id: lastID, name: type, stripe_product_id: product.id };
+    moduleProduct = { id: lastID, name: type, stripe_product_id: product.id, stripe_price_id: price.id };
   }
 
   return moduleProduct;
@@ -177,21 +177,21 @@ async function populateDatabase() {
                 VALUES (?, ?, ?, ?, ?)
               `, [content.title, extractYouTubeId(content.link), true, content.type, content.series]);
               
-              const stripeProduct = await createStripeProduct(content, videoId);
-              await db.run('UPDATE videos SET stripe_product_id = ? WHERE id = ?', [stripeProduct.id, videoId]);
+              const { product, price } = await createStripeProduct(content, videoId);
+              await db.run('UPDATE videos SET stripe_product_id = ?, stripe_price_id = ? WHERE id = ?', [product.id, price.id, videoId]);
 
               if (content.series) {
                 const seriesProduct = await getOrCreateSeriesProduct(db, content.series, content.type);
                 await db.run(
-                  'INSERT OR REPLACE INTO series (id, name, stripe_product_id) VALUES (?, ?, ?)',
-                  [seriesProduct.id, seriesProduct.name, seriesProduct.stripe_product_id]
+                  'INSERT OR REPLACE INTO series (id, name, stripe_product_id, stripe_price_id) VALUES (?, ?, ?, ?)',
+                  [seriesProduct.id, seriesProduct.name, seriesProduct.stripe_product_id, seriesProduct.stripe_price_id]
                 );
               }
 
               const moduleProduct = await getOrCreateModuleProduct(db, content.type);
               await db.run(
-                'INSERT OR REPLACE INTO modules (id, name, stripe_product_id) VALUES (?, ?, ?)',
-                [moduleProduct.id, moduleProduct.name, moduleProduct.stripe_product_id]
+                'INSERT OR REPLACE INTO modules (id, name, stripe_product_id, stripe_price_id) VALUES (?, ?, ?, ?)',
+                [moduleProduct.id, moduleProduct.name, moduleProduct.stripe_product_id, moduleProduct.stripe_price_id]
               );
             } catch (error) {
               console.error('Error processing premium content row:', error);

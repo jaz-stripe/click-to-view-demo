@@ -4,10 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "node server.js",
+    "dev": "node --experimental-specifier-resolution=node server.js",
     "build": "next build",
-    "start": "NODE_ENV=production node server.js",
-    "generate-cert": "node create-cert.js"
+    "start": "NODE_ENV=production node --experimental-specifier-resolution=node server.js"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.5.1",

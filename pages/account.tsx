@@ -116,7 +116,7 @@ export default function Account() {
         <div className={styles.modal}>
           <div className={styles.modalContent}>
             <p className={styles.modalText}>
-              You will be redirected to a payment page where a $1 charge will be taken and your payment details saved for future payments. You will be able to manage your payments via a customer portal. You will be billed monthly for your usage of TVNZ+ premium content.
+              We are redirecting you input, validate and store your payment details. Managing your payment methods, purchases and invoices will be easy via the "Manage my payments" portal here. You will be billed monthly for your usage of TVNZ+ premium content.
             </p>
             <div className={styles.modalButtons}>
               <button className={styles.acceptButton} onClick={handleModalAccept}>Accept</button>

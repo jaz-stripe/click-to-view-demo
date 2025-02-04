@@ -1,7 +1,7 @@
-const { createServer } = require('https');
-const { parse } = require('url');
-const next = require('next');
-const fs = require('fs');
+import https from 'https';
+import { parse } from 'url';
+import next from 'next';
+import fs from 'fs';
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
@@ -13,7 +13,7 @@ const httpsOptions = {
 };
 
 app.prepare().then(() => {
-  createServer(httpsOptions, (req, res) => {
+  https.createServer(httpsOptions, (req, res) => {
     const parsedUrl = parse(req.url, true);
     const { pathname } = parsedUrl;
 
