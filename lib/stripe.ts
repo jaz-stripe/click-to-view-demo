@@ -1,8 +1,9 @@
 // lib/stripe.ts
 import Stripe from 'stripe';
-import { getDb } from './db';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+import { STRIPE_SECRET_KEY } from './config.ts';
+
+const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: '2023-08-16',
 });
 
@@ -28,7 +29,6 @@ export async function createCheckoutSession(customerId: string, returnUrl: strin
       cancel_url: `${returnUrl}`,
     });
   }
-  
 
 export async function hasValidPaymentMethod(customerId: string) {
     try {
