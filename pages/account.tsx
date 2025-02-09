@@ -57,18 +57,33 @@ export default function Account() {
 
   const handleModalAccept = async () => {
     setIsModalOpen(false);
+    setIsLoading(true);
     try {
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          returnUrl: `${window.location.origin}`
+          returnUrl: `${window.location.origin}/account`,
+          cancelUrl: `${window.location.origin}/account`,
         }),
       });
-      const session = await response.json();
-      router.push(session.url);
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}, message: ${data.error}`);
+      }
+  
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
     } catch (error) {
       console.error('Error creating checkout session:', error);
+      alert(`Failed to create checkout session: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -103,11 +118,12 @@ export default function Account() {
           <div className={styles.buttonRow}>
             <button className={styles.doneButton} onClick={handleDone}>DONE</button>
             <button 
-              className={`${styles.paymentButton} ${user.hasPaymentMethod ? styles.manage : styles.add}`}
-              onClick={user.hasPaymentMethod ? handleManagePayments : handleAddPaymentMethod}
-            >
-              {user.hasPaymentMethod ? 'Manage payments' : 'Add payment method'}
-            </button>
+                className={`${styles.paymentButton} ${user.hasPaymentMethod ? styles.manage : styles.add}`}
+                onClick={user.hasPaymentMethod ? handleManagePayments : handleAddPaymentMethod}
+                disabled={isLoading}
+                >
+                {isLoading ? 'Loading...' : (user.hasPaymentMethod ? 'Manage payments' : 'Add payment method')}
+                </button>
           </div>
         </div>
       </main>

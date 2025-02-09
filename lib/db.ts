@@ -1,7 +1,26 @@
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 
-let db: any;
+let db: sqlite3.Database | null = null;
+
+export function getDb(): Promise<sqlite3.Database> {
+  return new Promise((resolve, reject) => {
+    if (db) {
+      resolve(db);
+    } else {
+      db = new sqlite3.Database('./mydb.sqlite', (err) => {
+        if (err) {
+          console.error('Error connecting to the database:', err);
+          reject(err);
+        } else {
+          console.log('Connected to the database successfully');
+          resolve(db!);
+        }
+      });
+    }
+  });
+}
+
 
 async function initializeDb() {
   db = await open({
@@ -69,8 +88,3 @@ async function initializeDb() {
 }
 
 initializeDb();
-
-export async function getDb() {
-  if (!db) await initializeDb();
-  return db;
-}

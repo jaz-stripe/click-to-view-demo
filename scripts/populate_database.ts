@@ -5,6 +5,7 @@ import csv from 'csv-parser';
 import Stripe from 'stripe';
 import dotenv from 'dotenv';
 import { getDb } from '../lib/db.ts';
+import { getOrCreateFreeSubscription } from './lib/stripe';
 
 // Load environment variables from .env.local
 dotenv.config({ path: '.env.local' });
@@ -131,6 +132,8 @@ async function populateDatabase() {
 
   try {
     const db = await getDb();
+
+    await getOrCreateFreeSubscription();
 
     // Read and populate free content
     await new Promise<void>((resolve, reject) => {

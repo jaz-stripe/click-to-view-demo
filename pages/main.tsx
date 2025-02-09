@@ -15,6 +15,7 @@ interface Video {
 }
 
 export default function Main() {
+  console.log('Main component rendering');
   const user = useSelector((state: RootState) => state.user);
   const dispatch = useDispatch();
   const router = useRouter();
@@ -23,16 +24,45 @@ export default function Main() {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseOptions, setPurchaseOptions] = useState<PurchaseOption[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
+  console.log('User state:', user);
+  console.log('Videos state:', videos);
   useEffect(() => {
-    fetchUserData();
-    fetchVideos();
+    console.log('useEffect running');
+    let userDataFetched = false;
+    let videosDataFetched = false;
+  
+    const fetchData = async () => {
+      try {
+        await Promise.all([
+          fetchUserData().then(() => { 
+            userDataFetched = true; 
+            console.log('User data fetched successfully');
+          }),
+          fetchVideos().then(() => { 
+            videosDataFetched = true; 
+            console.log('Videos fetched successfully');
+          })
+        ]);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        console.log('Data fetching complete. User:', userDataFetched, 'Videos:', videosDataFetched);
+        setDataLoaded(true);
+        setLoading(false);
+      }
+    };
+  
+    fetchData();
   }, []);
 
   const fetchUserData = async () => {
+    console.log('Fetching user data');
     try {
       const response = await fetch('/api/user');
       const data = await response.json();
+      console.log('User data fetched:', data);
       if (data.user) {
         dispatch(setUser(data.user));
         dispatch(setHasPaymentMethod(data.user.hasPaymentMethod));
@@ -41,18 +71,25 @@ export default function Main() {
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const fetchVideos = async () => {
+    console.log('Fetching videos');
     try {
       const response = await fetch('/api/videos');
       const data = await response.json();
-      setVideos(data.videos);
+      console.log('Raw video data:', data);
+      if (data && data.videos && Array.isArray(data.videos)) {
+        console.log('Setting videos:', data.videos);
+        setVideos(data.videos);
+      } else {
+        console.error('Unexpected video data structure:', data);
+        setVideos([]);
+      }
     } catch (error) {
       console.error('Error fetching videos:', error);
+      setVideos([]);
     }
   };
 
@@ -127,29 +164,36 @@ export default function Main() {
     }
   };
 
-  if (loading) {
+  if (!dataLoaded || loading) {
     return <div>Loading...</div>;
   }
-
+  
   if (!user.email) {
+    console.log('User email not available, returning null');
     return null;
   }
+  
+  console.log('Rendering main content');
 
   return (
     <div className={styles.container}>
       <TopBar userEmoji={user.emoji} onLogout={handleLogout} />
       <main className={styles.main}>
         <div className={styles.videoGrid}>
-          {videos.map((video) => (
-            <div key={video.id} className={styles.videoCard} onClick={() => handleVideoClick(video)}>
-              <h3>{video.title}</h3>
-              {video.is_premium && (
-                <span className={video.isPurchased ? styles.purchasedBadge : styles.premiumBadge}>
-                  {video.isPurchased ? 'Purchased' : 'Premium'}
-                </span>
-              )}
-            </div>
-          ))}
+          {Array.isArray(videos) ? (
+            videos.map((video) => (
+              <div key={video.id} className={styles.videoCard} onClick={() => handleVideoClick(video)}>
+                <h3>{video.title}</h3>
+                {video.is_premium && (
+                  <span className={video.isPurchased ? styles.purchasedBadge : styles.premiumBadge}>
+                    {video.isPurchased ? 'Purchased' : 'Premium'}
+                  </span>
+                )}
+              </div>
+            ))
+          ) : (
+            <p>No videos available</p>
+          )}
         </div>
         {!user.hasPaymentMethod && (
           <div className={styles.paymentPrompt}>

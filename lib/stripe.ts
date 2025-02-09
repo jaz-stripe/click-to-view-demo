@@ -1,5 +1,6 @@
 // lib/stripe.ts
 import Stripe from 'stripe';
+import { getDb } from './db';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-08-16',
@@ -162,3 +163,65 @@ function parseTier(tier: string): { amount: number, duration: number | null } {
   export async function retrieveSubscription(subscriptionId: string) {
     return stripe.subscriptions.retrieve(subscriptionId);
   }
+
+  export async function getOrCreateFreeSubscription(db: any) {
+    console.log('Entering getOrCreateFreeSubscription');
+    try {
+      // Check if the free subscription module already exists
+      let freeModule = await db.get('SELECT stripe_product_id, stripe_price_id FROM modules WHERE name = ?', ['TVNZ Premium Free Subscription']);
+      console.log('Free module query result:', freeModule);
+  
+      if (freeModule) {
+        console.log('Existing free subscription found:', freeModule);
+        return { productId: freeModule.stripe_product_id, priceId: freeModule.stripe_price_id };
+      }
+  
+      console.log('No free subscription found, creating it');
+  
+      // Create Stripe product and price
+      const product = await stripe.products.create({
+        name: 'TVNZ Premium',
+        description: 'Free access to premium content',
+      });
+      console.log('Stripe product created:', product.id);
+  
+      const price = await stripe.prices.create({
+        product: product.id,
+        unit_amount: 0,
+        currency: 'nzd',
+        recurring: { interval: 'month' },
+      });
+      console.log('Stripe price created:', price.id);
+  
+      // Save the free subscription module
+      await db.run(
+        'INSERT INTO modules (name, stripe_product_id, stripe_price_id) VALUES (?, ?, ?)',
+        ['TVNZ Premium Free Subscription', product.id, price.id]
+      );
+  
+      console.log('New free subscription created:', { productId: product.id, priceId: price.id });
+      return { productId: product.id, priceId: price.id };
+    } catch (error) {
+      console.error('Error in getOrCreateFreeSubscription:', error);
+      throw error;
+    }
+  }
+  
+  async function getFreeSubscriptionModule(db: any): Promise<{ stripe_product_id: string, stripe_price_id: string } | null> {
+    console.log('Entering getFreeSubscriptionModule');
+    const query = 'SELECT stripe_product_id, stripe_price_id FROM modules WHERE name = ?';
+    const params = ['TVNZ Premium Free Subscription'];
+    
+    return new Promise((resolve, reject) => {
+      db.get(query, params, (err, row) => {
+        if (err) {
+          console.error('Error in getFreeSubscriptionModule:', err);
+          reject(err);
+        } else {
+          console.log('Query result:', row);
+          resolve(row || null);
+        }
+      });
+    });
+  }
+  

@@ -9,6 +9,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Fetch all videos from the database
       const videos = await db.all('SELECT id, title, youtube_id, is_premium FROM videos');
       
+      // debug output, send the video array to the console
+      console.log('Sending video data:', { videos: videos });
+
       // Send the videos as a JSON response
       res.status(200).json({ videos });
     } catch (error) {
