@@ -45,8 +45,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         case 'payment_method.detached':
           await handlePaymentMethodDetached(db, event.data.object as Stripe.PaymentMethod);
           break;
-        case 'customer.subscription.created':
-        case 'customer.subscription.updated':
+        // case 'customer.subscription.created':
+        // case 'customer.subscription.updated':
         case 'customer.subscription.deleted':
           await handleSubscriptionChange(db, event.data.object as Stripe.Subscription);
           break;
@@ -100,15 +100,22 @@ async function handleSubscriptionChange(db: any, subscription: Stripe.Subscripti
     return;
   }
 
-  if (subscription.status === 'active') {
-    await db.run('UPDATE users SET hasPaymentMethod = ?, stripeSubscriptionId = ? WHERE id = ?', [true, subscription.id, user.id]);
-    console.log(`Subscription activated for user: ${user.id}`);
-  } else if (subscription.status === 'canceled') {
-    await db.run('UPDATE users SET stripeSubscriptionId = NULL WHERE id = ?', [user.id]);
-    console.log(`Subscription canceled for user: ${user.id}`);
-    // Note: We're not removing access to premium content here. 
-    // You may want to implement a grace period or immediate removal based on your business logic.
+  // TODO: FIX THIS LOGIC - remove the relevant subscription
+  // We are just hard removing the access
+  if (subscription.status === 'canceled') {
+    await db.run('DELETE FROM user_subscriptions WHERE subscription_id =?', [subscription.id]);
+    console.log(`Subscription canceled for user: ${user.id}. Removed from DB`);
   }
+
+//   if (subscription.status === 'active') {
+//     await db.run('UPDATE users SET hasPaymentMethod = ?, stripeSubscriptionId = ? WHERE id = ?', [true, subscription.id, user.id]);
+//     console.log(`Subscription activated for user: ${user.id}`);
+//   } else if (subscription.status === 'canceled') {
+//     await db.run('UPDATE users SET stripeSubscriptionId = NULL WHERE id = ?', [user.id]);
+//     console.log(`Subscription canceled for user: ${user.id}`);
+//     // Note: We're not removing access to premium content here. 
+//     // You may want to implement a grace period or immediate removal based on your business logic.
+//   }
 }
 
 async function handleInvoicePaid(db: any, invoice: Stripe.Invoice) {

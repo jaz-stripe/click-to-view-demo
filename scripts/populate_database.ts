@@ -3,13 +3,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import csv from 'csv-parser';
 import Stripe from 'stripe';
-import dotenv from 'dotenv';
-import '../lib/config.ts';
 import { getDb } from '../lib/db.ts';
 import { getOrCreateFreeSubscription } from '../lib/stripe.ts';
-
-// Load environment variables from .env.local
-dotenv.config({ path: '.env.local' });
+import { STRIPE_SECRET_KEY } from '../lib/config.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,7 +15,7 @@ const freeContentPath = path.resolve(__dirname, '../data/free_content.csv');
 const premiumContentPath = path.resolve(__dirname, '../data/premium_content.csv');
 
 // Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: '2023-08-16',
 });
 

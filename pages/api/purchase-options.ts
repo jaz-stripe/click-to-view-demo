@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getAvailablePurchaseOptions } from '../../lib/VideoAccess';
+import { PurchaseOption } from '../../types';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { videoId, userId } = req.query;

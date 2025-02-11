@@ -1,10 +1,7 @@
-import dotenv from 'dotenv';
 import Stripe from 'stripe';
+import { STRIPE_SECRET_KEY } from '../lib/config.ts';
 
-// Load environment variables from .env.local
-dotenv.config({ path: '.env.local' });
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: '2023-08-16',
 });
 

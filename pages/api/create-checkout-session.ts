@@ -13,53 +13,58 @@ function getNextMonthFirstDay() {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let db;
-  if (req.method === 'POST') {
-    try {
-      db = await getDb();
-      const userEmail = req.cookies.userEmail;
-      
-      if (!userEmail) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      const user = await db.get('SELECT * FROM users WHERE email = ?', [userEmail]);
-      
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      let stripeCustomerId = user.stripeCustomerId;
-
-      if (!stripeCustomerId) {
-        // Create a new Stripe customer
-        const customer = await stripe.customers.create({ email: userEmail });
-        stripeCustomerId = customer.id;
-
-        // Update the user in the database with the new Stripe customer ID
-        await db.run('UPDATE users SET stripeCustomerId = ? WHERE email = ?', [stripeCustomerId, userEmail]);
-
-        try {
-          console.log('Before calling getOrCreateFreeSubscription');
-          const { priceId } = await getOrCreateFreeSubscription(db);
-          console.log('After getOrCreateFreeSubscription, priceId:', priceId);
+    if (req.method === 'POST') {
+      try {
+        const db = await getDb();
+        const userEmail = req.cookies.userEmail;
         
-          // Create a subscription for the customer
-          console.log('Creating Stripe subscription');
-          const subscription = await stripe.subscriptions.create({
-            customer: stripeCustomerId,
-            items: [{ price: priceId }],
-            billing_cycle_anchor: getNextMonthFirstDay(),
-            proration_behavior: 'none',
-          });
-        
-          console.log(`Free subscription created for customer ${stripeCustomerId}: ${subscription.id}`);
-        } catch (subscriptionError) {
-          console.error('Error in subscription creation process:', subscriptionError);
-          // Instead of continuing, we should return an error response
-          return res.status(500).json({ error: 'Failed to create free subscription', details: subscriptionError.message });
+        if (!userEmail) {
+          return res.status(401).json({ error: 'User not authenticated' });
         }
-      }
+  
+        const user = await db.get('SELECT * FROM users WHERE email = ?', [userEmail]);
+        
+        if (!user) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+  
+        let stripeCustomerId = user.stripeCustomerId;
+  
+        if (!stripeCustomerId) {
+          // Create a new Stripe customer
+          const customer = await stripe.customers.create({ email: userEmail });
+          stripeCustomerId = customer.id;
+  
+          // Update the user in the database with the new Stripe customer ID
+          await db.run('UPDATE users SET stripeCustomerId = ? WHERE email = ?', [stripeCustomerId, userEmail]);
+        }
+
+        // Check if there is a Stripe user and no main subscription
+        const stripeMainSubscription = await db.get('SELECT * from user_subscriptions where user_id = ? AND is_main = 1', [user.id]);
+        if(stripeCustomerId && !stripeMainSubscription) {
+          try {
+            console.log('Before calling getOrCreateFreeSubscription');
+            const { priceId } = await getOrCreateFreeSubscription(db);
+            console.log('After getOrCreateFreeSubscription, priceId:', priceId);
+          
+            // Create a subscription for the customer
+            console.log('Creating Stripe subscription');
+            const subscription = await stripe.subscriptions.create({
+                customer: stripeCustomerId,
+                items: [{ price: priceId }],
+                billing_cycle_anchor: getNextMonthFirstDay(),
+                proration_behavior: 'none',
+            });
+            console.log(`Free subscription created for customer ${stripeCustomerId}: ${subscription.id}`);
+            
+            // Save the subscription ID in the user_subscriptions table
+            await db.run('INSERT INTO user_subscriptions (user_id, subscription_id, is_main) VALUES (?, ?, 1)', [user.id, subscription.id]);
+          } catch (subscriptionError) {
+            console.error('Error in subscription creation process:', subscriptionError);
+            // Instead of continuing, we should return an error response
+            return res.status(500).json({ error: 'Failed to create free subscription', details: subscriptionError.message });
+          }
+        }
 
       // Extract the returnUrl and cancelUrl from the request body
       const { returnUrl, cancelUrl } = req.body;
@@ -81,10 +86,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error('Stripe error response:', err.response.data);
       }
       res.status(500).json({ error: err.message, details: err.response?.data });
-    } finally {
-      if (db) {
-        await db.close();
-      }
     }
   } else {
     res.setHeader('Allow', 'POST');

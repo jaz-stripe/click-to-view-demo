@@ -1,33 +1,21 @@
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 
-let db: sqlite3.Database | null = null;
+let db: any = null;
 
-export function getDb(): Promise<sqlite3.Database> {
-  return new Promise((resolve, reject) => {
-    if (db) {
-      resolve(db);
-    } else {
-      db = new sqlite3.Database('./mydb.sqlite', (err) => {
-        if (err) {
-          console.error('Error connecting to the database:', err);
-          reject(err);
-        } else {
-          console.log('Connected to the database successfully');
-          resolve(db!);
-        }
-      });
-    }
-  });
+export async function getDb() {
+  if (!db) {
+    db = await open({
+      filename: './mydb.sqlite',
+      driver: sqlite3.Database
+    });
+    console.log('Database connection established');
+    await initialiseDb(db);
+  }
+  return db;
 }
 
-
-async function initializeDb() {
-  db = await open({
-    filename: './mydb.sqlite',
-    driver: sqlite3.Database
-  });
-
+async function initialiseDb(db: any) {
   await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,6 +59,7 @@ async function initializeDb() {
       video_id INTEGER,
       series_id INTEGER,
       purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id),
       FOREIGN KEY (video_id) REFERENCES videos(id),
       FOREIGN KEY (series_id) REFERENCES series(id)
     );
@@ -78,13 +67,18 @@ async function initializeDb() {
     CREATE TABLE IF NOT EXISTS user_subscriptions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
-      module_id INTEGER NOT NULL,
-      status TEXT NOT NULL,
+      module_id INTEGER,
+      subscription_id TEXT NOT NULL,
+      status TEXT,
       start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       end_date TIMESTAMP,
-      FOREIGN KEY (module_id) REFERENCES modules(id)
+      is_main BOOLEAN DEFAULT 0,
+      FOREIGN KEY (module_id) REFERENCES modules(id),
+      FOREIGN KEY(user_id) REFERENCES users(id)
     );
   `);
+  console.log('Database schema initialized');
 }
 
-initializeDb();
+// This ensures the database is initialized when this module is imported
+getDb().catch(console.error);

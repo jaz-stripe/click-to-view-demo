@@ -1,41 +1,93 @@
+// In purchases.ts
 import { NextApiRequest, NextApiResponse } from 'next';
+import Stripe from 'stripe';
 import { getDb } from '../../lib/db';
-import { addItemToSubscription } from '../../lib/stripe';
+import { stripe } from '../../lib/stripe';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method === 'POST') {
+    const { userId, priceId, videoId, type, name } = req.body;
 
-  const { userId, priceId, videoId } = req.body;
+    try {
+      const db = await getDb();
+      const user = await db.get('SELECT stripeCustomerId FROM users WHERE id = ?', [userId]);
 
-  try {
-    const db = await getDb();
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+      if (!user || !user.stripeCustomerId) {
+        return res.status(400).json({ error: 'User not found or has no Stripe customer ID' });
+      }
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      // Retrieve the main subscription ID for the user
+      const userSubscription = await db.get('SELECT subscription_id FROM user_subscriptions WHERE user_id = ? AND is_main = 1', [userId]);
+      
+      if (!userSubscription || !userSubscription.subscription_id) {
+        return res.status(400).json({ error: 'User has no active main subscription' });
+      }
+
+      const mainSubscriptionId = userSubscription.subscription_id;
+
+      let result;
+
+      switch (type) {
+        case 'video':
+          // Add the video to the main subscription
+          result = await addVideoToSubscription(mainSubscriptionId, priceId);
+          // Update the user_purchases table
+          await db.run('INSERT INTO user_purchases (user_id, video_id) VALUES (?, ?)', [userId, videoId]);
+          break;
+
+        case 'series':
+          // Add the series as a subscription item to the main subscription
+          result = await addSeasonToSubscription(mainSubscriptionId, priceId);
+          // Update the user_purchases table
+          await db.run('INSERT INTO user_purchases (user_id, series_id) VALUES (?, (SELECT id FROM series WHERE name = ?))', [userId, name]);
+          break;
+
+        case 'module':
+          // Create a new subscription for the module
+          result = await createModuleSubscription(user.stripeCustomerId, priceId);
+          // Store the new subscription in user_subscriptions
+          await db.run('INSERT INTO user_subscriptions (user_id, module_id, subscription_id, is_main) VALUES (?, (SELECT id FROM modules WHERE name = ?), ?, 0)', [userId, name, result.id]);
+          break;
+
+        default:
+          return res.status(400).json({ error: 'Invalid purchase type' });
+      }
+
+      res.status(200).json({ success: true, result });
+    } catch (error) {
+      console.error('Error processing purchase:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
-
-    if (user.hasPaymentMethod) {
-      await addItemToSubscription(user.stripe_subscription_id, priceId);
-      await db.run('INSERT INTO user_purchases (user_id, video_id, stripe_price_id) VALUES (?, ?, ?)', [userId, videoId, priceId]);
-      return res.status(200).json({ success: true });
-    } else {
-        const returnUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/video?id=${videoId}`;
-        const cancelUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/main`;
-        
-        // Return information for creating a checkout session
-        return res.status(200).json({ 
-            needsPaymentMethod: true, 
-            checkoutUrl: '/api/create-checkout-session',
-            videoId: videoId,
-            returnUrl: returnUrl,
-            cancelUrl: cancelUrl
-        });
-    }
-  } catch (error) {
-    console.error('Error processing purchase:', error);
-    return res.status(500).json({ error: 'Error processing purchase' });
+  } else {
+    res.setHeader('Allow', 'POST');
+    res.status(405).end('Method Not Allowed');
   }
+}
+
+async function addVideoToSubscription(subscriptionId: string, priceId: string): Promise<Stripe.SubscriptionItem> {
+  return stripe.subscriptionItems.create({
+    subscription: subscriptionId,
+    price: priceId,
+    quantity: 1,
+  });
+}
+
+async function addSeasonToSubscription(subscriptionId: string, priceId: string): Promise<Stripe.SubscriptionItem> {
+  return stripe.subscriptionItems.create({
+    subscription: subscriptionId,
+    price: priceId,
+    quantity: 1,
+  });
+}
+
+async function createModuleSubscription(customerId: string, priceId: string): Promise<Stripe.SubscriptionItem> {
+    const now = new Date();
+    const firstDayNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  
+    return stripe.subscriptions.create({
+      customer: customerId,
+      items: [{ price: priceId }],
+      billing_cycle_anchor: Math.floor(firstDayNextMonth.getTime() / 1000),
+      proration_behavior: 'none',
+    });
 }

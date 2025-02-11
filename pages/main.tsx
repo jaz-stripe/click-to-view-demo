@@ -14,6 +14,14 @@ interface Video {
   is_premium: boolean;
 }
 
+interface PurchaseOption {
+  type: 'video' | 'series' | 'module';
+  name: string;
+  priceId: string;
+  amount: number;
+  currency: string;
+}
+
 export default function Main() {
   console.log('Main component rendering');
   const user = useSelector((state: RootState) => state.user);
@@ -28,6 +36,7 @@ export default function Main() {
 
   console.log('User state:', user);
   console.log('Videos state:', videos);
+
   useEffect(() => {
     console.log('useEffect running');
     let userDataFetched = false;
@@ -129,38 +138,39 @@ export default function Main() {
     }
   };
 
-  const handlePurchase = async (priceId: string) => {
+  const handlePurchase = async (option: PurchaseOption) => {
     if (!selectedVideo) return;
   
     try {
       const response = await fetch('/api/purchases', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, priceId, videoId: selectedVideo.id }),
+        body: JSON.stringify({
+          userId: user.id,
+          priceId: option.priceId,
+          videoId: selectedVideo.id,
+          type: option.type,
+          name: option.name
+        }),
       });
+  
       const data = await response.json();
   
-      if (data.needsPaymentMethod) {
-        const checkoutResponse = await fetch('/api/create-checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            returnUrl: data.returnUrl,
-            cancelUrl: data.cancelUrl
-          }),
-        });
-        const checkoutData = await checkoutResponse.json();
-        if (checkoutData.url) {
-          router.push(checkoutData.url);
-        } else {
-          throw new Error('No URL returned from checkout session creation');
-        }
-      } else if (data.success) {
+      if (data.success) {
         setShowPurchaseModal(false);
-        router.push(`/video?id=${selectedVideo.id}`);
+        if (option.type === 'video') {
+          router.push(`/video?id=${selectedVideo.id}`);
+        } else {
+          alert(`Successfully purchased ${option.type}: ${option.name}`);
+        }
+      } else if (data.needsPaymentMethod) {
+        router.push('/account');
+      } else {
+        throw new Error(data.error || 'Purchase failed');
       }
     } catch (error) {
       console.error('Error processing purchase:', error);
+      alert('Failed to process purchase. Please try again.');
     }
   };
 
@@ -225,7 +235,7 @@ export default function Main() {
                   {option.type === 'module' && `Watch all ${option.name} content for a month`}
                 </span>
                 <button
-                  onClick={() => handlePurchase(option.priceId)}
+                  onClick={() => handlePurchase(option)}
                   className={styles.purchaseButton}
                 >
                   ${(option.amount / 100).toFixed(2)}
