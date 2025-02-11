@@ -1,8 +1,7 @@
 // In purchases.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import Stripe from 'stripe';
 import { getDb } from '../../lib/db';
-import { stripe } from '../../lib/stripe';
+import { addVideoToSubscription, addSeasonToSubscription, createModuleSubscription } from '../../lib/stripe';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
@@ -64,30 +63,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-async function addVideoToSubscription(subscriptionId: string, priceId: string): Promise<Stripe.SubscriptionItem> {
-  return stripe.subscriptionItems.create({
-    subscription: subscriptionId,
-    price: priceId,
-    quantity: 1,
-  });
-}
-
-async function addSeasonToSubscription(subscriptionId: string, priceId: string): Promise<Stripe.SubscriptionItem> {
-  return stripe.subscriptionItems.create({
-    subscription: subscriptionId,
-    price: priceId,
-    quantity: 1,
-  });
-}
-
-async function createModuleSubscription(customerId: string, priceId: string): Promise<Stripe.SubscriptionItem> {
-    const now = new Date();
-    const firstDayNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  
-    return stripe.subscriptions.create({
-      customer: customerId,
-      items: [{ price: priceId }],
-      billing_cycle_anchor: Math.floor(firstDayNextMonth.getTime() / 1000),
-      proration_behavior: 'none',
-    });
-}

@@ -158,7 +158,7 @@ export default function Main() {
   
       if (data.success) {
         setShowPurchaseModal(false);
-        if (option.type === 'video') {
+        if (option.type === 'video' || option.type === 'series' || option.type === 'module') {
           router.push(`/video?id=${selectedVideo.id}`);
         } else {
           alert(`Successfully purchased ${option.type}: ${option.name}`);

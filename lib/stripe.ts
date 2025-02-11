@@ -163,6 +163,10 @@ function parseTier(tier: string): { amount: number, duration: number | null } {
   export async function retrieveSubscription(subscriptionId: string) {
     return stripe.subscriptions.retrieve(subscriptionId);
   }
+  
+  export async function retrievePrice(priceId: string) {
+    return stripe.prices.retrieve(priceId);
+  }
 
   export async function getOrCreateFreeSubscription(db: any) {
     console.log('Entering getOrCreateFreeSubscription');
@@ -225,3 +229,36 @@ function parseTier(tier: string): { amount: number, duration: number | null } {
     });
   }
   
+
+// Purchases functions
+export async function addVideoToSubscription(subscriptionId: string, priceId: string): Promise<Stripe.InvoiceItem> {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    
+    return stripe.invoiceItems.create({
+        customer: subscription.customer as string,
+        price: priceId,
+        quantity: 1,
+    });
+}
+
+export async function addSeasonToSubscription(subscriptionId: string, priceId: string): Promise<Stripe.InvoiceItem> {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    
+    return stripe.invoiceItems.create({
+        customer: subscription.customer as string,
+        price: priceId,
+        quantity: 1,
+    });
+}
+
+export async function createModuleSubscription(customerId: string, priceId: string): Promise<Stripe.Subscription> {
+    const now = new Date();
+    const firstDayNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    return stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: priceId }],
+        billing_cycle_anchor: Math.floor(firstDayNextMonth.getTime() / 1000),
+        proration_behavior: 'none',
+    });
+}

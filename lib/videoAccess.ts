@@ -1,9 +1,5 @@
 import { getDb } from './db';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-08-16',
-});
+import { retrievePrice } from './stripe';
 
 interface PurchaseOption {
   type: 'video' | 'series' | 'module';
@@ -78,7 +74,7 @@ export async function getAvailablePurchaseOptions(videoId: number, userId: numbe
     if (!videoPurchase && video.stripe_price_id) {
       console.log('Attempting to add video purchase option');
       try {
-        const price = await stripe.prices.retrieve(video.stripe_price_id);
+        const price = await retrievePrice(video.stripe_price_id);
         console.log('Retrieved price:', price);
         options.push({
           type: 'video',
@@ -106,7 +102,7 @@ export async function getAvailablePurchaseOptions(videoId: number, userId: numbe
         console.log('Series details:', series);
         if (series && series.stripe_price_id) {
           try {
-            const price = await stripe.prices.retrieve(series.stripe_price_id);
+            const price = await retrievePrice(series.stripe_price_id);
             console.log('Retrieved series price:', price);
             options.push({
               type: 'series',
@@ -136,7 +132,7 @@ export async function getAvailablePurchaseOptions(videoId: number, userId: numbe
         console.log('Module details:', module);
         if (module && module.stripe_price_id) {
           try {
-            const price = await stripe.prices.retrieve(module.stripe_price_id);
+            const price = await retrievePrice(module.stripe_price_id);
             console.log('Retrieved module price:', price);
             options.push({
               type: 'module',
