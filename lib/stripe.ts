@@ -9,6 +9,11 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
 
 const BASE_URL = process.env.SERVER_BASE_URL || 'https://localhost:3000';
 
+function getNextMonthFirstDay() {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime() / 1000;
+}
+
 export async function createStripeCustomer(email: string) {
   try {
     const customer = await stripe.customers.create({ email });
@@ -20,14 +25,37 @@ export async function createStripeCustomer(email: string) {
   }
 }
 
-export async function createCheckoutSession(customerId: string, returnUrl: string) {
-    return stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      mode: 'setup',
-      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${returnUrl}`,
-    });
+export async function createStripeCustomerSubscription(customerId: string, priceId: string) {
+    console.log(`Creating subscription for ${customerId} with price id ${priceId}`);
+    try {
+        const subscription = await stripe.subscriptions.create({
+            customer: customerId,
+            items: [{ price: priceId }],
+            billing_cycle_anchor: getNextMonthFirstDay(),
+            proration_behavior: 'none',
+        });
+        return subscription;
+    } catch (error) {
+        console.error('Error creating Stripe subscription:', error);
+        throw error;
+      }
+}
+
+export async function createCheckoutSession(customerId: string, returnUrl: string, cancelUrl: string) {
+    console.log(`Creating checkout session for ${customerId} with return url ${returnUrl} and cancel url ${cancelUrl}`);
+    try {
+        const checkoutSession = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        mode: 'setup',
+        success_url: returnUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
+        cancel_url: cancelUrl || returnUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
+        });
+        return checkoutSession;
+    } catch (error) {
+        console.error('Error creating Stripe checkout session:', error);
+        throw error;
+    }
   }
 
 export async function hasValidPaymentMethod(customerId: string) {
@@ -41,32 +69,6 @@ export async function hasValidPaymentMethod(customerId: string) {
       console.error('Error checking for valid payment method:', error);
       return false;
     }
-  }
-  
-export async function createOrUpdateStripeProducts(content: any, videoId: number) {
-    // Create or update the main product for the video
-    const product = await stripe.products.create({
-      name: content.title,
-      metadata: {
-        videoId: videoId.toString(),
-        type: content.type,
-        series: content.series || '',
-      },
-    });
-  
-    // Create price for one-time purchase
-    const tierPrice = parseTier(content.tier);
-    await stripe.prices.create({
-      product: product.id,
-      unit_amount: tierPrice.amount,
-      currency: 'nzd',
-      metadata: {
-        type: 'one_time',
-        duration: tierPrice.duration ? tierPrice.duration.toString() : '',
-      },
-    });
-  
-    return product;
   }
 
 export async function getOrCreateSeriesProduct(series: string, type: string) {
@@ -120,31 +122,16 @@ export async function getOrCreateModuleProduct(type: string) {
   return product;
 }
 
-function parseTier(tier: string): { amount: number, duration: number | null } {
-    if (tier.endsWith('s')) {
-      const [price, seconds] = tier.slice(0, -1).split('_');
-      return { 
-        amount: Math.round(parseFloat(price) * 100), 
-        duration: parseInt(seconds) 
-      };
-    }
-    return { amount: Math.round(parseFloat(tier) * 100), duration: null };
-  }
-
   export async function createOrRetrieveSubscription(customerId: string) {
     const subscriptions = await stripe.subscriptions.list({ customer: customerId });
     if (subscriptions.data.length > 0) {
       return subscriptions.data[0];
     }
   
-    // Set the billing cycle anchor to the last day of the current month
-    const now = new Date();
-    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-  
     return stripe.subscriptions.create({
       customer: customerId,
       items: [],
-      billing_cycle_anchor: Math.floor(lastDayOfMonth.getTime() / 1000),
+      billing_cycle_anchor: getNextMonthFirstDay(),
       proration_behavior: 'create_prorations',
       payment_settings: { save_default_payment_method: 'on_subscription' },
       expand: ['latest_invoice.payment_intent'],
@@ -252,13 +239,12 @@ export async function addSeasonToSubscription(subscriptionId: string, priceId: s
 }
 
 export async function createModuleSubscription(customerId: string, priceId: string): Promise<Stripe.Subscription> {
-    const now = new Date();
-    const firstDayNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
     return stripe.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
-        billing_cycle_anchor: Math.floor(firstDayNextMonth.getTime() / 1000),
+        billing_cycle_anchor: getNextMonthFirstDay(),
         proration_behavior: 'none',
     });
 }
+
+// Checkout functions

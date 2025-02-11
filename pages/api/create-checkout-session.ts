@@ -1,16 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import Stripe from 'stripe';
 import { getDb } from '../../lib/db';
-import { getOrCreateFreeSubscription } from '../../lib/stripe'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-08-16',
-});
-
-function getNextMonthFirstDay() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime() / 1000;
-}
+import { createCheckoutSession } from '../../lib/stripe';
+import { getOrCreateFreeSubscription, createStripeCustomer, createStripeCustomerSubscription } from '../../lib/stripe'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method === 'POST') {
@@ -32,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
         if (!stripeCustomerId) {
           // Create a new Stripe customer
-          const customer = await stripe.customers.create({ email: userEmail });
+          const customer = await createStripeCustomer(userEmail);
           stripeCustomerId = customer.id;
   
           // Update the user in the database with the new Stripe customer ID
@@ -49,12 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           
             // Create a subscription for the customer
             console.log('Creating Stripe subscription');
-            const subscription = await stripe.subscriptions.create({
-                customer: stripeCustomerId,
-                items: [{ price: priceId }],
-                billing_cycle_anchor: getNextMonthFirstDay(),
-                proration_behavior: 'none',
-            });
+            const subscription = await createStripeCustomerSubscription(stripeCustomerId, priceId);
             console.log(`Free subscription created for customer ${stripeCustomerId}: ${subscription.id}`);
             
             // Save the subscription ID in the user_subscriptions table
@@ -70,13 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { returnUrl, cancelUrl } = req.body;
 
       // Create Checkout Sessions from body params.
-      const session = await stripe.checkout.sessions.create({
-        mode: 'setup',
-        payment_method_types: ['card'],
-        customer: stripeCustomerId,
-        success_url: returnUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
-        cancel_url: cancelUrl || returnUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
-      });
+      const session = await createCheckoutSession(stripeCustomerId, returnUrl, cancelUrl)
 
       // Only return the URL
       res.status(200).json({ url: session.url });
