@@ -38,7 +38,7 @@ export async function checkUserAccess(videoId: number, userId: number): Promise<
   // Check module subscription
   if (video.type) {
     const moduleSubscription = await db.get(
-      'SELECT * FROM user_subscriptions WHERE user_id = ? AND module_id = (SELECT id FROM modules WHERE name = ?) AND status = "active"',
+      'SELECT * FROM user_subscriptions WHERE user_id = ? AND module_id = (SELECT id FROM modules WHERE name = ?)',
       [userId, video.type]
     );
     if (moduleSubscription) return true;

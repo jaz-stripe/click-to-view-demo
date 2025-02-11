@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/router';
 import TopBar from '../components/TopBar';
@@ -33,9 +33,21 @@ export default function Main() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseOptions, setPurchaseOptions] = useState<PurchaseOption[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [videoAccess, setVideoAccess] = useState<{ [key: number]: boolean }>({});
 
   console.log('User state:', user);
   console.log('Videos state:', videos);
+
+  const checkVideoAccess = useCallback(async (videoId: number) => {
+    try {
+      const response = await fetch(`/api/check-access?videoId=${videoId}&userId=${user.id}`);
+      const data = await response.json();
+      return data.hasAccess;
+    } catch (error) {
+      console.error('Error checking video access:', error);
+      return false;
+    }
+  }, [user.id]);
 
   useEffect(() => {
     console.log('useEffect running');
@@ -116,16 +128,37 @@ export default function Main() {
     }
   };
 
-  const handleVideoClick = async (video: Video) => {
-    if (video.is_premium) {
-      setSelectedVideo(video);
-      const options = await fetchPurchaseOptions(video.id);
-      setPurchaseOptions(options);
-      setShowPurchaseModal(true);
-    } else {
-      router.push(`/video?id=${video.id}`);
-    }
-  };
+    // Separate useEffect for checking video access
+    useEffect(() => {
+      const checkAllVideoAccess = async () => {
+        if (videos.length > 0 && user.id) {
+          const accessPromises = videos.map(async (video) => {
+            const hasAccess = await checkVideoAccess(video.id);
+            return { [video.id]: hasAccess };
+          });
+          
+          const accessResults = await Promise.all(accessPromises);
+          const newVideoAccess = Object.assign({}, ...accessResults);
+          setVideoAccess(newVideoAccess);
+        }
+      };
+  
+      checkAllVideoAccess();
+    }, [videos, user.id, checkVideoAccess]);
+
+    const handleVideoClick = async (video: Video) => {
+      // Recheck access before navigating
+      const hasAccess = await checkVideoAccess(video.id);
+      
+      if (video.is_premium && !hasAccess) {
+        setSelectedVideo(video);
+        const options = await fetchPurchaseOptions(video.id);
+        setPurchaseOptions(options);
+        setShowPurchaseModal(true);
+      } else {
+        router.push(`/video?id=${video.id}`);
+      }
+    };
 
   const fetchPurchaseOptions = async (videoId: number) => {
     try {
@@ -195,8 +228,8 @@ export default function Main() {
               <div key={video.id} className={styles.videoCard} onClick={() => handleVideoClick(video)}>
                 <h3>{video.title}</h3>
                 {video.is_premium && (
-                  <span className={video.isPurchased ? styles.purchasedBadge : styles.premiumBadge}>
-                    {video.isPurchased ? 'Purchased' : 'Premium'}
+                  <span className={videoAccess[video.id] ? styles.accessBadge : styles.premiumBadge}>
+                    {videoAccess[video.id] ? 'Access' : 'Premium'}
                   </span>
                 )}
               </div>

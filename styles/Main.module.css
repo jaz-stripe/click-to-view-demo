@@ -118,3 +118,13 @@
 .purchaseButton:hover {
   background-color: #0077a3;
 }
+
+.accessBadge {
+  display: inline-block;
+  background-color: #4CAF50; /* Green color for access */
+  color: white;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
