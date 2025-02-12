@@ -78,7 +78,7 @@ export default function Main() {
     fetchData();
   }, []);
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     console.log('Fetching user data');
     try {
       const response = await fetch('/api/user');
@@ -93,9 +93,9 @@ export default function Main() {
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
-  };
+  }, [dispatch, router]);  
 
-  const fetchVideos = async () => {
+  const fetchVideos = useCallback(async () => {
     console.log('Fetching videos');
     try {
       const response = await fetch('/api/videos');
@@ -112,7 +112,8 @@ export default function Main() {
       console.error('Error fetching videos:', error);
       setVideos([]);
     }
-  };
+  }, []);
+  
 
   const handleLogout = async () => {
     try {
@@ -158,23 +159,48 @@ export default function Main() {
       } else {
         router.push(`/video?id=${video.id}`);
       }
-    };
+    };    
 
-  const fetchPurchaseOptions = async (videoId: number) => {
-    try {
-      const response = await fetch(`/api/purchase-options?videoId=${videoId}&userId=${user.id}`);
-      const data = await response.json();
-      return data.purchaseOptions;
-    } catch (error) {
-      console.error('Error fetching purchase options:', error);
-      return [];
-    }
-  };
-
+    const fetchPurchaseOptions = useCallback(async (videoId: number) => {
+      try {
+        const response = await fetch(`/api/purchase-options?videoId=${videoId}&userId=${user.id}`);
+        const data = await response.json();
+        return data.purchaseOptions;
+      } catch (error) {
+        console.error('Error fetching purchase options:', error);
+        return [];
+      }
+    }, [user.id]);
+  
   const handlePurchase = async (option: PurchaseOption) => {
-    if (!selectedVideo) return;
+    if (!selectedVideo) {
+      console.error('No video selected for purchase');
+      return;
+    }
   
     try {
+      if (!user.hasPaymentMethod) {
+        // Redirect to add payment method
+        const checkoutResponse = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            returnUrl: `${window.location.origin}/main?action=purchase&videoId=${selectedVideo.id}&type=${option.type}`,
+            cancelUrl: `${window.location.origin}/main`,
+          }),
+        });
+  
+        const checkoutData = await checkoutResponse.json();
+  
+        if (checkoutData.url) {
+          window.location.href = checkoutData.url;
+          return; // Exit the function here as we're redirecting
+        } else {
+          throw new Error('No checkout URL returned');
+        }
+      }
+  
+      // If we have a payment method, proceed with the purchase
       const response = await fetch('/api/purchases', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -191,13 +217,7 @@ export default function Main() {
   
       if (data.success) {
         setShowPurchaseModal(false);
-        if (option.type === 'video' || option.type === 'series' || option.type === 'module') {
-          router.push(`/video?id=${selectedVideo.id}`);
-        } else {
-          alert(`Successfully purchased ${option.type}: ${option.name}`);
-        }
-      } else if (data.needsPaymentMethod) {
-        router.push('/account');
+        router.push(`/video?id=${selectedVideo.id}`);
       } else {
         throw new Error(data.error || 'Purchase failed');
       }
@@ -207,6 +227,36 @@ export default function Main() {
     }
   };
 
+  const handleDirectPurchase = useCallback(async (videoId: string, type: 'video' | 'series' | 'module') => {
+    const video = videos.find(v => v.id.toString() === videoId);
+    if (!video) return;
+  
+    const hasAccess = await checkVideoAccess(video.id);
+    
+    if (video.is_premium && !hasAccess) {
+      setSelectedVideo(video);
+      const options = await fetchPurchaseOptions(video.id);
+      const option = options.find(o => o.type === type);
+      
+      if (option) {
+        await handlePurchase(option);
+      } else {
+        console.error(`No purchase option found for type: ${type}`);
+      }
+    } else {
+      router.push(`/video?id=${video.id}`);
+    }
+  }, [videos, checkVideoAccess, fetchPurchaseOptions, handlePurchase, router]);
+
+  useEffect(() => {
+    const { action, videoId, type } = router.query;
+    
+    if (action === 'purchase' && typeof videoId === 'string' && typeof type === 'string') {
+      handleDirectPurchase(videoId, type as 'video' | 'series' | 'module');
+    }
+  }, [router.query, handleDirectPurchase]);
+  
+  
   if (!dataLoaded || loading) {
     return <div>Loading...</div>;
   }

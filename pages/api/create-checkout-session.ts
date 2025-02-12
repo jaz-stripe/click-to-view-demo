@@ -55,6 +55,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Extract the returnUrl and cancelUrl from the request body
       const { returnUrl, cancelUrl } = req.body;
 
+      if (!returnUrl || !cancelUrl) {
+        return res.status(400).json({ error: 'Missing returnUrl or cancelUrl' });
+      }
+
       // Create Checkout Sessions from body params.
       const session = await createCheckoutSession(stripeCustomerId, returnUrl, cancelUrl)
 
@@ -65,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (err.response) {
         console.error('Stripe error response:', err.response.data);
       }
-      res.status(500).json({ error: err.message, details: err.response?.data });
+      rres.status(500).json({ error: 'Failed to create checkout session', details: err.message });
     }
   } else {
     res.setHeader('Allow', 'POST');
