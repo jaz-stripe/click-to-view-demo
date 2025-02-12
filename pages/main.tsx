@@ -172,81 +172,81 @@ export default function Main() {
       }
     }, [user.id]);
   
-  const handlePurchase = async (option: PurchaseOption) => {
-    if (!selectedVideo) {
-      console.error('No video selected for purchase');
-      return;
-    }
-  
-    try {
-      if (!user.hasPaymentMethod) {
-        // Redirect to add payment method
-        const checkoutResponse = await fetch('/api/create-checkout-session', {
+    const handlePurchase = async (option: PurchaseOption) => {
+      if (!selectedVideo) {
+        console.error('No video selected for purchase');
+        return;
+      }
+    
+      try {
+        if (!user.hasPaymentMethod) {
+          // Redirect to add payment method
+          const checkoutResponse = await fetch('/api/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              returnUrl: `${window.location.origin}/main?action=purchase&videoId=${selectedVideo.id}&type=${option.type}`,
+              cancelUrl: `${window.location.origin}/main`,
+            }),
+          });
+    
+          const checkoutData = await checkoutResponse.json();
+    
+          if (checkoutData.url) {
+            window.location.href = checkoutData.url;
+            return; // Exit the function here as we're redirecting
+          } else {
+            throw new Error('No checkout URL returned');
+          }
+        }
+    
+        // If we have a payment method, proceed with the purchase
+        const response = await fetch('/api/purchases', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            returnUrl: `${window.location.origin}/main?action=purchase&videoId=${selectedVideo.id}&type=${option.type}`,
-            cancelUrl: `${window.location.origin}/main`,
+            userId: user.id,
+            priceId: option.priceId,
+            videoId: selectedVideo.id,
+            type: option.type,
+            name: option.name
           }),
         });
-  
-        const checkoutData = await checkoutResponse.json();
-  
-        if (checkoutData.url) {
-          window.location.href = checkoutData.url;
-          return; // Exit the function here as we're redirecting
-        } else {
-          throw new Error('No checkout URL returned');
-        }
-      }
-  
-      // If we have a payment method, proceed with the purchase
-      const response = await fetch('/api/purchases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          priceId: option.priceId,
-          videoId: selectedVideo.id,
-          type: option.type,
-          name: option.name
-        }),
-      });
-  
-      const data = await response.json();
-  
-      if (data.success) {
-        setShowPurchaseModal(false);
-        router.push(`/video?id=${selectedVideo.id}`);
-      } else {
-        throw new Error(data.error || 'Purchase failed');
-      }
-    } catch (error) {
-      console.error('Error processing purchase:', error);
-      alert('Failed to process purchase. Please try again.');
-    }
-  };
-
-  const handleDirectPurchase = useCallback(async (videoId: string, type: 'video' | 'series' | 'module') => {
-    const video = videos.find(v => v.id.toString() === videoId);
-    if (!video) return;
-  
-    const hasAccess = await checkVideoAccess(video.id);
     
-    if (video.is_premium && !hasAccess) {
-      setSelectedVideo(video);
-      const options = await fetchPurchaseOptions(video.id);
-      const option = options.find(o => o.type === type);
-      
-      if (option) {
-        await handlePurchase(option);
-      } else {
-        console.error(`No purchase option found for type: ${type}`);
+        const data = await response.json();
+    
+        if (data.success) {
+          setShowPurchaseModal(false);
+          router.push(`/video?id=${selectedVideo.id}`);
+        } else {
+          throw new Error(data.error || 'Purchase failed');
+        }
+      } catch (error) {
+        console.error('Error processing purchase:', error);
+        alert('Failed to process purchase. Please try again.');
       }
-    } else {
-      router.push(`/video?id=${video.id}`);
-    }
-  }, [videos, checkVideoAccess, fetchPurchaseOptions, handlePurchase, router]);
+    };    
+
+    const handleDirectPurchase = useCallback(async (videoId: string, type: 'video' | 'series' | 'module') => {
+      const video = videos.find(v => v.id.toString() === videoId);
+      if (!video) return;
+    
+      const hasAccess = await checkVideoAccess(video.id);
+      
+      if (video.is_premium && !hasAccess) {
+        setSelectedVideo(video);
+        const options = await fetchPurchaseOptions(video.id);
+        const option = options.find(o => o.type === type);
+        
+        if (option) {
+          await handlePurchase(option);
+        } else {
+          console.error(`No purchase option found for type: ${type}`);
+        }
+      } else {
+        router.push(`/video?id=${video.id}`);
+      }
+    }, [videos, checkVideoAccess, fetchPurchaseOptions, handlePurchase, router]);
 
   useEffect(() => {
     const { action, videoId, type } = router.query;
@@ -255,7 +255,6 @@ export default function Main() {
       handleDirectPurchase(videoId, type as 'video' | 'series' | 'module');
     }
   }, [router.query, handleDirectPurchase]);
-  
   
   if (!dataLoaded || loading) {
     return <div>Loading...</div>;
