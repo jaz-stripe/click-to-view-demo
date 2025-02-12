@@ -238,13 +238,20 @@ export async function addSeasonToSubscription(subscriptionId: string, priceId: s
     });
 }
 
-export async function createModuleSubscription(customerId: string, priceId: string): Promise<Stripe.Subscription> {
+export async function createModuleSubscription(customerId: string, priceId: string, type: string): Promise<Stripe.Subscription> {
     return stripe.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
         billing_cycle_anchor: getNextMonthFirstDay(),
         proration_behavior: 'none',
+        metadata: { type: type },
     });
 }
 
-// Checkout functions
+// Portal
+export async function createPortalSession(customerId: string, returnUrl: string):Promise<Stripe.Response<Stripe.BillingPortal.Session>> {
+    return stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: returnUrl,
+    });
+}

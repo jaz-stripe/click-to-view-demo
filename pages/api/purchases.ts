@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         case 'module':
           // Create a new subscription for the module
-          result = await createModuleSubscription(user.stripeCustomerId, priceId);
+          result = await createModuleSubscription(user.stripeCustomerId, priceId, name);
           // Store the new subscription in user_subscriptions
           await db.run('INSERT INTO user_subscriptions (user_id, module_id, subscription_id, is_main) VALUES (?, (SELECT id FROM modules WHERE name = ?), ?, 0)', [userId, name, result.id]);
           break;

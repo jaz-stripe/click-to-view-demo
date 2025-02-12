@@ -1,10 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { getDb } from '../../lib/db';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-08-16',
-});
+import { createPortalSession } from '../../lib/stripe';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -25,10 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'User has no associated Stripe customer' });
     }
 
-    const session = await stripe.billingPortal.sessions.create({
-      customer: user.stripeCustomerId,
-      return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
-    });
+    const session = await createPortalSession(user.stripeCustomerId, `${process.env.NEXT_PUBLIC_BASE_URL}/account`)
 
     res.status(200).json({ url: session.url });
   } catch (error) {

@@ -271,16 +271,24 @@ export default function Main() {
     <div className={styles.container}>
       <TopBar userEmoji={user.emoji} onLogout={handleLogout} />
       <main className={styles.main}>
-        <div className={styles.videoGrid}>
+      <div className={styles.videoGrid}>
           {Array.isArray(videos) ? (
             videos.map((video) => (
               <div key={video.id} className={styles.videoCard} onClick={() => handleVideoClick(video)}>
-                <h3>{video.title}</h3>
-                {video.is_premium && (
-                  <span className={videoAccess[video.id] ? styles.accessBadge : styles.premiumBadge}>
-                    {videoAccess[video.id] ? 'Access' : 'Premium'}
-                  </span>
-                )}
+                <div className={styles.videoPreview}>
+                  <img 
+                    src={`https://img.youtube.com/vi/${video.youtube_id}/0.jpg`} 
+                    alt={video.title} 
+                    className={styles.previewImage}
+                    loading="lazy"
+                  />
+                  {video.is_premium && (
+                    <span className={`${styles.badge} ${videoAccess[video.id] ? styles.accessBadge : styles.premiumBadge}`}>
+                      {videoAccess[video.id] ? 'Access' : 'Premium'}
+                    </span>
+                  )}
+                </div>
+                <h3 className={styles.videoTitle}>{video.title}</h3>
               </div>
             ))
           ) : (
