@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 import styles from '../styles/TopBar.module.css';
+import { useSimplified } from './SimplifiedContext';
 
 interface TopBarProps {
   userEmoji: string;
@@ -9,14 +10,20 @@ interface TopBarProps {
 }
 
 export default function TopBar({ userEmoji, onLogout }: TopBarProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLogoMenuOpen, setIsLogoMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const logoMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { isSimplified, toggleSimplified } = useSimplified();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+      if (logoMenuRef.current && !logoMenuRef.current.contains(event.target as Node)) {
+        setIsLogoMenuOpen(false);
       }
     };
 
@@ -26,20 +33,39 @@ export default function TopBar({ userEmoji, onLogout }: TopBarProps) {
     };
   }, []);
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
+  const toggleUserMenu = () => {
+    setIsUserMenuOpen(!isUserMenuOpen);
+  };
+
+  const toggleLogoMenu = () => {
+    setIsLogoMenuOpen(!isLogoMenuOpen);
   };
 
   const handleAccountClick = () => {
-    setIsMenuOpen(false);
+    setIsUserMenuOpen(false);
     router.push('/account');
   };
 
   return (
     <header className={styles.header}>
       <div className={styles.leftSection}>
-        <div className={styles.logoContainer}>
-          <Image src="/tvnz-plus-logo.svg" alt="TVNZ+ Logo" width={100} height={50} />
+        <div className={styles.logoContainer} ref={logoMenuRef}>
+          <button onClick={toggleLogoMenu} className={styles.logoButton}>
+            <Image src="/tvnz-plus-logo.svg" alt="TVNZ+ Logo" width={100} height={50} />
+          </button>
+          {isLogoMenuOpen && (
+            <div className={styles.dropdown}>
+              <label className={styles.toggleSwitch}>
+                <input
+                  type="checkbox"
+                  checked={isSimplified}
+                  onChange={toggleSimplified}
+                />
+                <span className={styles.toggleSlider}></span>
+                Simplified
+              </label>
+            </div>
+          )}
         </div>
         <nav className={styles.navigation}>
           <a href="#" className={styles.navItem}>Home</a>
@@ -50,11 +76,11 @@ export default function TopBar({ userEmoji, onLogout }: TopBarProps) {
         </nav>
       </div>
       <div className={styles.rightSection}>
-        <div className={styles.userMenu} ref={menuRef}>
-          <button onClick={toggleMenu} className={styles.avatarButton}>
+        <div className={styles.userMenu} ref={userMenuRef}>
+          <button onClick={toggleUserMenu} className={styles.avatarButton}>
             {userEmoji}
           </button>
-          {isMenuOpen && (
+          {isUserMenuOpen && (
             <div className={styles.dropdown}>
               <button onClick={() => console.log('Manage Profile')}>Manage Profile</button>
               <button onClick={handleAccountClick}>Account</button>

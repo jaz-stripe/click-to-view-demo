@@ -255,3 +255,118 @@ export async function createPortalSession(customerId: string, returnUrl: string)
         return_url: returnUrl,
     });
 }
+
+// Simplied
+export async function getCustomerDefaultPaymentMethod(customerId: string): Promise<string | null> {
+    console.log(`Attempting to get default payment method for customer: ${customerId}`);
+    try {
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: customerId,
+        type: 'card',
+      });
+  
+      console.log(`Found ${paymentMethods.data.length} payment methods for customer`);
+  
+      if (paymentMethods.data.length > 0) {
+        console.log(`Using payment method: ${paymentMethods.data[0].id}`);
+        return paymentMethods.data[0].id;
+      }
+  
+      console.log('No payment methods found for customer');
+      return null;
+    } catch (error) {
+      console.error('Error retrieving customer payment methods:', error);
+      return null;
+    }
+  }
+
+  export async function createImmediatePurchase(customerId: string, priceId: string, videoId: string, videoTitle: string): Promise<Stripe.PaymentIntent> {
+    console.log(`Creating immediate purchase for customer: ${customerId}, price: ${priceId}, video: ${videoId}`);
+    try {
+      const paymentMethodId = await getCustomerDefaultPaymentMethod(customerId);
+  
+      if (!paymentMethodId) {
+        throw new Error('No payment method found for customer');
+      }
+  
+      const price = await stripe.prices.retrieve(priceId);
+      console.log(`Retrieved price: ${price.id}, amount: ${price.unit_amount}, currency: ${price.currency}`);
+  
+      const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
+
+      const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
+        amount: price.unit_amount!,
+        currency: price.currency,
+        customer: customerId,
+        payment_method: paymentMethodId,
+        off_session: true,
+        confirm: true,
+        metadata: { videoId: videoId, videoTitle: videoTitle },
+        receipt_email: customer.email,  // This will trigger Stripe to send a receipt email
+        description: `Purchase of "${videoTitle}"`,  // This will appear on the receipt
+      };
+
+      const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+  
+      console.log(`Created PaymentIntent: ${paymentIntent.id}, status: ${paymentIntent.status}`);
+  
+      return paymentIntent;
+    } catch (error) {
+      console.error('Error creating immediate purchase:', error);
+      throw error;
+    }
+  }
+  
+//   export async function createImmediatePurchase(customerId: string, priceId: string, videoId: string, videoTitle: string): Promise<{ paymentIntent: Stripe.PaymentIntent, invoice: Stripe.Invoice }> {
+//     try {
+//       const paymentMethodId = await getCustomerDefaultPaymentMethod(customerId);
+  
+//       if (!paymentMethodId) {
+//         throw new Error('No payment method found for customer');
+//       }
+  
+//       const price = await stripe.prices.retrieve(priceId);
+  
+//       // Create a PaymentIntent
+//       const paymentIntent = await stripe.paymentIntents.create({
+//         amount: price.unit_amount!,
+//         currency: price.currency,
+//         customer: customerId,
+//         payment_method: paymentMethodId,
+//         off_session: true,
+//         confirm: true,
+//         metadata: { videoId: videoId },
+//       });
+  
+//       // If payment is successful, create an invoice
+//       if (paymentIntent.status === 'succeeded') {
+//         const invoice = await stripe.invoices.create({
+//           customer: customerId,
+//           auto_advance: false, // Draft invoice
+//         });
+  
+//         // Add invoice item
+//         await stripe.invoiceItems.create({
+//           customer: customerId,
+//           price: priceId,
+//           invoice: invoice.id,
+//           description: `Purchase of "${videoTitle}"`,
+//         });
+  
+//         // Finalize and pay the invoice
+//         const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+//         const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id);
+  
+//         // Send the invoice (receipt) by email
+//         await stripe.invoices.sendInvoice(paidInvoice.id);
+  
+//         return { paymentIntent, invoice: paidInvoice };
+//       } else {
+//         throw new Error('Payment failed');
+//       }
+//     } catch (error) {
+//       console.error('Error creating immediate purchase:', error);
+//       throw error;
+//     }
+//   }
+  

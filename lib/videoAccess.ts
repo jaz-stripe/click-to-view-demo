@@ -47,11 +47,11 @@ export async function checkUserAccess(videoId: number, userId: number): Promise<
   return false;
 }
 
-export async function getAvailablePurchaseOptions(videoId: number, userId: number): Promise<PurchaseOption[]> {
+export async function getAvailablePurchaseOptions(videoId: number, userId: number, simplified: boolean = false): Promise<PurchaseOption[]> {
     const db = await getDb();
     const options: PurchaseOption[] = [];
   
-    console.log(`Getting purchase options for videoId: ${videoId}, userId: ${userId}`);
+    console.log(`Getting purchase options for videoId: ${videoId}, userId: ${userId}, simplified: ${simplified}`);
   
     // Get video details
     const video = await db.get('SELECT * FROM videos WHERE id = ?', [videoId]);
@@ -88,64 +88,67 @@ export async function getAvailablePurchaseOptions(videoId: number, userId: numbe
       }
     }
   
-    // Check series option
-    if (video.series) {
-      console.log('Checking series option:', video.series);
-      const seriesPurchase = await db.get(
-        'SELECT * FROM user_purchases WHERE user_id = ? AND series_id = (SELECT id FROM series WHERE name = ?)',
-        [userId, video.series]
-      );
-      console.log('Series purchase:', seriesPurchase);
-  
-      if (!seriesPurchase) {
-        const series = await db.get('SELECT * FROM series WHERE name = ?', [video.series]);
-        console.log('Series details:', series);
-        if (series && series.stripe_price_id) {
-          try {
-            const price = await retrievePrice(series.stripe_price_id);
-            console.log('Retrieved series price:', price);
-            options.push({
-              type: 'series',
-              name: video.series,
-              priceId: series.stripe_price_id,
-              amount: price.unit_amount!,
-              currency: price.currency
-            });
-          } catch (error) {
-            console.error('Error retrieving series price:', error);
-          }
+    if (!simplified) {
+        console.log("This is not simplified, lets add all the options!")
+        // Check series option
+        if (video.series) {
+        console.log('Checking series option:', video.series);
+        const seriesPurchase = await db.get(
+            'SELECT * FROM user_purchases WHERE user_id = ? AND series_id = (SELECT id FROM series WHERE name = ?)',
+            [userId, video.series]
+        );
+        console.log('Series purchase:', seriesPurchase);
+    
+        if (!seriesPurchase) {
+            const series = await db.get('SELECT * FROM series WHERE name = ?', [video.series]);
+            console.log('Series details:', series);
+            if (series && series.stripe_price_id) {
+            try {
+                const price = await retrievePrice(series.stripe_price_id);
+                console.log('Retrieved series price:', price);
+                options.push({
+                type: 'series',
+                name: video.series,
+                priceId: series.stripe_price_id,
+                amount: price.unit_amount!,
+                currency: price.currency
+                });
+            } catch (error) {
+                console.error('Error retrieving series price:', error);
+            }
+            }
         }
-      }
-    }
-  
-    // Check module option
-    if (video.type) {
-      console.log('Checking module option:', video.type);
-      const moduleSubscription = await db.get(
-        'SELECT * FROM user_subscriptions WHERE user_id = ? AND module_id = (SELECT id FROM modules WHERE name = ?)',
-        [userId, video.type]
-      );
-      console.log('Module subscription:', moduleSubscription);
-  
-      if (!moduleSubscription) {
-        const module = await db.get('SELECT * FROM modules WHERE name = ?', [video.type]);
-        console.log('Module details:', module);
-        if (module && module.stripe_price_id) {
-          try {
-            const price = await retrievePrice(module.stripe_price_id);
-            console.log('Retrieved module price:', price);
-            options.push({
-              type: 'module',
-              name: video.type,
-              priceId: module.stripe_price_id,
-              amount: price.unit_amount!,
-              currency: price.currency
-            });
-          } catch (error) {
-            console.error('Error retrieving module price:', error);
-          }
         }
-      }
+    
+        // Check module option
+        if (video.type) {
+        console.log('Checking module option:', video.type);
+        const moduleSubscription = await db.get(
+            'SELECT * FROM user_subscriptions WHERE user_id = ? AND module_id = (SELECT id FROM modules WHERE name = ?)',
+            [userId, video.type]
+        );
+        console.log('Module subscription:', moduleSubscription);
+    
+        if (!moduleSubscription) {
+            const module = await db.get('SELECT * FROM modules WHERE name = ?', [video.type]);
+            console.log('Module details:', module);
+            if (module && module.stripe_price_id) {
+            try {
+                const price = await retrievePrice(module.stripe_price_id);
+                console.log('Retrieved module price:', price);
+                options.push({
+                type: 'module',
+                name: video.type,
+                priceId: module.stripe_price_id,
+                amount: price.unit_amount!,
+                currency: price.currency
+                });
+            } catch (error) {
+                console.error('Error retrieving module price:', error);
+            }
+            }
+        }
+        }
     }
   
     console.log('Final purchase options:', options);

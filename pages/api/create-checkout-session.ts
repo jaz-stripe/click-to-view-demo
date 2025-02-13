@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (err.response) {
         console.error('Stripe error response:', err.response.data);
       }
-      rres.status(500).json({ error: 'Failed to create checkout session', details: err.message });
+      res.status(500).json({ error: 'Failed to create checkout session', details: err.message });
     }
   } else {
     res.setHeader('Allow', 'POST');

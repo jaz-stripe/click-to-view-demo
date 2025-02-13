@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/router';
 import { RootState } from '../store';
 import { setUser, setHasPaymentMethod } from '../slices/userSlice';
+import { useSimplified } from '../components/SimplifiedContext';
 import TopBar from '../components/TopBar';
 import styles from '../styles/Account.module.css';
 
@@ -12,6 +13,7 @@ export default function Account() {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { isSimplified } = useSimplified();
 
   useEffect(() => {
     verifyPaymentMethod();
@@ -59,7 +61,7 @@ export default function Account() {
     setIsModalOpen(false);
     setIsLoading(true);
     try {
-      const response = await fetch('/api/create-checkout-session', {
+      const response = await fetch(isSimplified ? '/api/create-checkout-session-simple' : '/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -128,11 +130,13 @@ export default function Account() {
         </div>
       </main>
       {isModalOpen && (
-        <div className={styles.modal}>
-          <div className={styles.modalContent}>
-            <p className={styles.modalText}>
-              We are redirecting you to input, validate and store your payment details. Managing your payment methods, purchases and invoices will be easy via the "Manage my payments" portal here. You will be billed monthly for your usage of TVNZ+ premium content.
-            </p>
+    <div className={styles.modal}>
+      <div className={styles.modalContent}>
+        <p className={styles.modalText}>
+          {isSimplified
+            ? "We are redirecting you to input, validate and store your payment details. Managing your payment methods, purchases and invoices will be easy via the 'Manage my payments' portal here. You will be charged immediatly for your usage of TVNZ+ premium purchases."
+            : "We are redirecting you to input, validate and store your payment details. Managing your payment methods, purchases and invoices will be easy via the 'Manage my payments' portal here. You will be billed monthly for your usage of TVNZ+ premium content."}
+        </p>
             <div className={styles.modalButtons}>
               <button className={styles.acceptButton} onClick={handleModalAccept}>Accept</button>
               <button className={styles.declineButton} onClick={handleModalDecline}>Decline</button>

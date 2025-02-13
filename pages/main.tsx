@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import TopBar from '../components/TopBar';
 import { RootState } from '../store';
 import { setUser, setHasPaymentMethod } from '../slices/userSlice';
+import { useSimplified } from '../components/SimplifiedContext';
 import styles from '../styles/Main.module.css';
 import Modal from '../components/Modal';
 
@@ -22,6 +23,10 @@ interface PurchaseOption {
   currency: string;
 }
 
+function capitalizeFirstLetter(val) {
+  return String(val).charAt(0).toUpperCase() + String(val).slice(1);
+}
+
 export default function Main() {
   console.log('Main component rendering');
   const user = useSelector((state: RootState) => state.user);
@@ -34,6 +39,7 @@ export default function Main() {
   const [purchaseOptions, setPurchaseOptions] = useState<PurchaseOption[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [videoAccess, setVideoAccess] = useState<{ [key: number]: boolean }>({});
+  const { isSimplified } = useSimplified();
 
   console.log('User state:', user);
   console.log('Videos state:', videos);
@@ -148,22 +154,25 @@ export default function Main() {
     }, [videos, user.id, checkVideoAccess]);
 
     const handleVideoClick = async (video: Video) => {
-      // Recheck access before navigating
+      console.log("handleVideoClick called for video:", video.id);
       const hasAccess = await checkVideoAccess(video.id);
+      console.log("Video access:", hasAccess);
       
       if (video.is_premium && !hasAccess) {
         setSelectedVideo(video);
-        const options = await fetchPurchaseOptions(video.id);
+        const options = await fetchPurchaseOptions(video.id, isSimplified);
+        console.log("Purchase options:", options);
         setPurchaseOptions(options);
         setShowPurchaseModal(true);
       } else {
+        console.log("Navigating to video page");
         router.push(`/video?id=${video.id}`);
       }
-    };    
+    };
 
-    const fetchPurchaseOptions = useCallback(async (videoId: number) => {
+    const fetchPurchaseOptions = useCallback(async (videoId: number, simplified: boolean) => {
       try {
-        const response = await fetch(`/api/purchase-options?videoId=${videoId}&userId=${user.id}`);
+        const response = await fetch(`/api/purchase-options?videoId=${videoId}&userId=${user.id}&simplified=${simplified}`);
         const data = await response.json();
         return data.purchaseOptions;
       } catch (error) {
@@ -181,7 +190,7 @@ export default function Main() {
       try {
         if (!user.hasPaymentMethod) {
           // Redirect to add payment method
-          const checkoutResponse = await fetch('/api/create-checkout-session', {
+          const checkoutResponse = await fetch(isSimplified ? '/api/create-checkout-session-simple' : '/api/create-checkout-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -209,7 +218,8 @@ export default function Main() {
             priceId: option.priceId,
             videoId: selectedVideo.id,
             type: option.type,
-            name: option.name
+            name: option.name,
+            isSimplified: isSimplified
           }),
         });
     
@@ -235,7 +245,7 @@ export default function Main() {
       
       if (video.is_premium && !hasAccess) {
         setSelectedVideo(video);
-        const options = await fetchPurchaseOptions(video.id);
+        const options = await fetchPurchaseOptions(video.id, isSimplified);
         const option = options.find(o => o.type === type);
         
         if (option) {
@@ -306,23 +316,25 @@ export default function Main() {
       </main>
       {showPurchaseModal && selectedVideo && (
         <Modal
-          title={selectedVideo.title}
+          title={"Purchase premium content"}
           onClose={() => setShowPurchaseModal(false)}
         >
           {!user.hasPaymentMethod && (
             <p className={styles.paymentMethodInfo}>
-              On purchasing you will be redirected to input, validate and store your payment details. 
-              Managing your payment methods, purchases and invoices will be easy via the "Manage my payments" 
-              portal in your account settings. You will be billed monthly for your usage of TVNZ+ premium content.
+             {isSimplified ? (
+                "On purchase you will be redircted you to input, validate and store your payment details. Managing your payment methods, purchases and invoices will be easy via the 'Manage my payments' portal here. You will be charged immediatly for your usage of TVNZ+ premium purchases."
+              ) : (
+                "On purchasing you will be redirected to input, validate and store your payment details. Managing your payment methods, purchases and invoices will be easy via the 'Manage my payments' portal in your account settings. You will be billed monthly for your usage of TVNZ+ premium content."
+              )}
             </p>
           )}
           <div className={styles.purchaseOptions}>
             {purchaseOptions.map((option) => (
               <div key={option.priceId} className={styles.purchaseOption}>
                 <span className={styles.optionText}>
-                  {option.type === 'video' && 'Watch this video forever'}
-                  {option.type === 'series' && `Watch all videos in the ${option.name} season`}
-                  {option.type === 'module' && `Watch all ${option.name} content for a month`}
+                  {option.type === 'video' && `Buy '${selectedVideo.title}'`}
+                  {option.type === 'series' && `Season pass for ${option.name}`}
+                  {option.type === 'module' && `Subscribe to TVNZ ${capitalizeFirstLetter(option.name)}`}
                 </span>
                 <button
                   onClick={() => handlePurchase(option)}
