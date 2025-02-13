@@ -55,35 +55,6 @@ export default function Main() {
     }
   }, [user.id]);
 
-  useEffect(() => {
-    console.log('useEffect running');
-    let userDataFetched = false;
-    let videosDataFetched = false;
-  
-    const fetchData = async () => {
-      try {
-        await Promise.all([
-          fetchUserData().then(() => { 
-            userDataFetched = true; 
-            console.log('User data fetched successfully');
-          }),
-          fetchVideos().then(() => { 
-            videosDataFetched = true; 
-            console.log('Videos fetched successfully');
-          })
-        ]);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        console.log('Data fetching complete. User:', userDataFetched, 'Videos:', videosDataFetched);
-        setDataLoaded(true);
-        setLoading(false);
-      }
-    };
-  
-    fetchData();
-  }, []);
-
   const fetchUserData = useCallback(async () => {
     console.log('Fetching user data');
     try {
@@ -93,13 +64,15 @@ export default function Main() {
       if (data.user) {
         dispatch(setUser(data.user));
         dispatch(setHasPaymentMethod(data.user.hasPaymentMethod));
+        return data.user;
       } else {
         router.push('/');
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
-  }, [dispatch, router]);  
+    return null;
+  }, [dispatch, router]);
 
   const fetchVideos = useCallback(async () => {
     console.log('Fetching videos');
@@ -120,6 +93,33 @@ export default function Main() {
     }
   }, []);
   
+  useEffect(() => {
+    console.log('useEffect running');
+    let userDataFetched = false;
+    let videosDataFetched = false;
+  
+    const fetchData = async () => {
+      try {
+        const userData = await fetchUserData();
+        userDataFetched = !!userData;
+        console.log('User data fetched successfully', userData);
+  
+        if (userDataFetched) {
+          const videosData = await fetchVideos();
+          videosDataFetched = !!videosData;
+          console.log('Videos fetched successfully', videosData);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        console.log('Data fetching complete. User:', userDataFetched, 'Videos:', videosDataFetched);
+        setDataLoaded(true);
+        setLoading(false);
+      }
+    };
+  
+    fetchData();
+  }, [fetchUserData, fetchVideos]);
 
   const handleLogout = async () => {
     try {
@@ -189,12 +189,23 @@ export default function Main() {
     
       try {
         if (!user.hasPaymentMethod) {
+          // Store purchase intent with all necessary information, including user ID
+          localStorage.setItem('pendingPurchase', JSON.stringify({
+            userId: user.id,
+            videoId: selectedVideo.id,
+            videoTitle: selectedVideo.title,
+            type: option.type,
+            priceId: option.priceId,
+            name: option.name,
+            isSimplified: isSimplified
+          }));
+    
           // Redirect to add payment method
           const checkoutResponse = await fetch(isSimplified ? '/api/create-checkout-session-simple' : '/api/create-checkout-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              returnUrl: `${window.location.origin}/main?action=purchase&videoId=${selectedVideo.id}&type=${option.type}`,
+              returnUrl: `${window.location.origin}/main?action=purchase`,
               cancelUrl: `${window.location.origin}/main`,
             }),
           });
@@ -210,61 +221,70 @@ export default function Main() {
         }
     
         // If we have a payment method, proceed with the purchase
-        const response = await fetch('/api/purchases', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            priceId: option.priceId,
-            videoId: selectedVideo.id,
-            type: option.type,
-            name: option.name,
-            isSimplified: isSimplified
-          }),
+        await processPurchase({
+          userId: user.id,
+          videoId: selectedVideo.id,
+          videoTitle: selectedVideo.title,
+          type: option.type,
+          priceId: option.priceId,
+          name: option.name,
+          isSimplified: isSimplified
         });
-    
-        const data = await response.json();
-    
-        if (data.success) {
-          setShowPurchaseModal(false);
-          router.push(`/video?id=${selectedVideo.id}`);
-        } else {
-          throw new Error(data.error || 'Purchase failed');
-        }
       } catch (error) {
         console.error('Error processing purchase:', error);
         alert('Failed to process purchase. Please try again.');
       }
+    };
+    
+    
+    const processPurchase = async (purchaseData: {
+      userId: string;
+      videoId: number;
+      videoTitle: string;
+      type: string;
+      priceId: string;
+      name: string;
+      isSimplified: boolean;
+    }) => {
+      console.log('Processing purchase:', purchaseData);
+      const response = await fetch('/api/purchases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(purchaseData),
+      });
+    
+      const data = await response.json();
+    
+      if (data.success) {
+        setShowPurchaseModal(false);
+        router.push(`/video?id=${purchaseData.videoId}`);
+      } else {
+        throw new Error(data.error || 'Purchase failed');
+      }
     };    
 
-    const handleDirectPurchase = useCallback(async (videoId: string, type: 'video' | 'series' | 'module') => {
-      const video = videos.find(v => v.id.toString() === videoId);
-      if (!video) return;
-    
-      const hasAccess = await checkVideoAccess(video.id);
+    useEffect(() => {
+      const { action } = router.query;
       
-      if (video.is_premium && !hasAccess) {
-        setSelectedVideo(video);
-        const options = await fetchPurchaseOptions(video.id, isSimplified);
-        const option = options.find(o => o.type === type);
-        
-        if (option) {
-          await handlePurchase(option);
-        } else {
-          console.error(`No purchase option found for type: ${type}`);
+      const processPendingPurchase = async () => {
+        if (action === 'purchase' && user.email) {  // Only proceed if user data is available
+          const pendingPurchaseString = localStorage.getItem('pendingPurchase');
+          if (pendingPurchaseString) {
+            const pendingPurchase = JSON.parse(pendingPurchaseString);
+            await processPurchase({
+              ...pendingPurchase,
+              userId: user.id,  // Use the current user ID
+              isSimplified: isSimplified
+            });
+            localStorage.removeItem('pendingPurchase');
+          }
         }
-      } else {
-        router.push(`/video?id=${video.id}`);
-      }
-    }, [videos, checkVideoAccess, fetchPurchaseOptions, handlePurchase, router]);
-
-  useEffect(() => {
-    const { action, videoId, type } = router.query;
+      };
     
-    if (action === 'purchase' && typeof videoId === 'string' && typeof type === 'string') {
-      handleDirectPurchase(videoId, type as 'video' | 'series' | 'module');
-    }
-  }, [router.query, handleDirectPurchase]);
+      if (dataLoaded) {
+        processPendingPurchase();
+      }
+    }, [router.query, user, dataLoaded, isSimplified]);
   
   if (!dataLoaded || loading) {
     return <div>Loading...</div>;
