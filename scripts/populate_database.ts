@@ -98,7 +98,7 @@ async function getOrCreateModuleProduct(db: any, type: string) {
   
   if (!moduleProduct) {
     const product = await stripe.products.create({
-      name: `${type.charAt(0).toUpperCase() + type.slice(1)} Module`,
+      name: `TVNZ Premium ${type.charAt(0).toUpperCase() + type.slice(1)}s`,
       metadata: { type: type, isModule: 'true' },
     });
 
