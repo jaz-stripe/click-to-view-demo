@@ -44,6 +44,22 @@ export default function Main() {
   console.log('User state:', user);
   console.log('Videos state:', videos);
 
+  const verifyPaymentMethod = async () => {
+    console.log('Verifying payment method');
+    try {
+      const response = await fetch('/api/verify-payment-method');
+      const data = await response.json();
+      console.log('Payment method verification result:', data);
+      if (data.hasPaymentMethod) {
+        dispatch(setHasPaymentMethod(true));
+      } else {
+        dispatch(setHasPaymentMethod(false));
+      }
+    } catch (error) {
+      console.error('Error verifying payment method:', error);
+    }
+  };
+
   const checkVideoAccess = useCallback(async (videoId: number) => {
     try {
       const response = await fetch(`/api/check-access?videoId=${videoId}&userId=${user.id}`);
@@ -94,7 +110,7 @@ export default function Main() {
   }, []);
   
   useEffect(() => {
-    console.log('useEffect running');
+    console.log('Main useEffect running');
     let userDataFetched = false;
     let videosDataFetched = false;
   
@@ -105,6 +121,7 @@ export default function Main() {
         console.log('User data fetched successfully', userData);
   
         if (userDataFetched) {
+          await verifyPaymentMethod(); // Verify payment method after fetching user data
           const videosData = await fetchVideos();
           videosDataFetched = !!videosData;
           console.log('Videos fetched successfully', videosData);
@@ -236,7 +253,6 @@ export default function Main() {
       }
     };
     
-    
     const processPurchase = async (purchaseData: {
       userId: string;
       videoId: number;
@@ -257,26 +273,27 @@ export default function Main() {
     
       if (data.success) {
         setShowPurchaseModal(false);
+        await verifyPaymentMethod(); // Verify payment method after successful purchase
         router.push(`/video?id=${purchaseData.videoId}`);
       } else {
         throw new Error(data.error || 'Purchase failed');
       }
-    };    
+    };
 
     useEffect(() => {
       const { action } = router.query;
       
       const processPendingPurchase = async () => {
-        if (action === 'purchase' && user.email) {  // Only proceed if user data is available
+        if (action === 'purchase' && user.email) {
           const pendingPurchaseString = localStorage.getItem('pendingPurchase');
           if (pendingPurchaseString) {
             const pendingPurchase = JSON.parse(pendingPurchaseString);
+            localStorage.removeItem('pendingPurchase'); // Remove immediately to prevent double processing
             await processPurchase({
               ...pendingPurchase,
-              userId: user.id,  // Use the current user ID
+              userId: user.id,
               isSimplified: isSimplified
             });
-            localStorage.removeItem('pendingPurchase');
           }
         }
       };
@@ -284,7 +301,7 @@ export default function Main() {
       if (dataLoaded) {
         processPendingPurchase();
       }
-    }, [router.query, user, dataLoaded, isSimplified]);
+    }, [router.query, user, dataLoaded, isSimplified, processPurchase]);
   
   if (!dataLoaded || loading) {
     return <div>Loading...</div>;
@@ -306,9 +323,9 @@ export default function Main() {
             videos.map((video) => (
               <div key={video.id} className={styles.videoCard} onClick={() => handleVideoClick(video)}>
                 <div className={styles.videoPreview}>
-                  <img 
+                  <img
                     src={`https://img.youtube.com/vi/${video.youtube_id}/0.jpg`} 
-                    alt={video.title} 
+                    alt={video.title}
                     className={styles.previewImage}
                     loading="lazy"
                   />
