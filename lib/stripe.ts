@@ -46,7 +46,8 @@ export async function createCheckoutSession(customerId: string, returnUrl: strin
     try {
         const checkoutSession = await stripe.checkout.sessions.create({
         customer: customerId,
-        payment_method_types: ['card', 'nz_bank_account'],
+        payment_method_types: ['card'],
+        // payment_method_types: ['card', 'nz_bank_account'],
         mode: 'setup',
         success_url: returnUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
         cancel_url: cancelUrl || returnUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
