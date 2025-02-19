@@ -1,10 +1,10 @@
 // lib/stripe.ts
 import Stripe from 'stripe';
 
-import { STRIPE_SECRET_KEY } from './config.ts';
+import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } from './config.ts';
 
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2023-08-16',
+const stripe = new Stripe(STRIPE_SECRET_KEY as string, {
+  apiVersion: '2025-01-27.acacia; nz_bank_account_beta=v2'
 });
 
 const BASE_URL = process.env.SERVER_BASE_URL || 'https://localhost:3000';
@@ -46,7 +46,7 @@ export async function createCheckoutSession(customerId: string, returnUrl: strin
     try {
         const checkoutSession = await stripe.checkout.sessions.create({
         customer: customerId,
-        payment_method_types: ['card'],
+        payment_method_types: ['card', 'nz_bank_account'],
         mode: 'setup',
         success_url: returnUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
         cancel_url: cancelUrl || returnUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
@@ -60,10 +60,7 @@ export async function createCheckoutSession(customerId: string, returnUrl: strin
 
 export async function hasValidPaymentMethod(customerId: string) {
     try {
-      const paymentMethods = await stripe.paymentMethods.list({
-        customer: customerId,
-        type: 'card',
-      });
+      const paymentMethods = await getStripeCustomerPaymentMethods(customerId);
       return paymentMethods.data.length > 0;
     } catch (error) {
       console.error('Error checking for valid payment method:', error);
@@ -135,15 +132,6 @@ export async function getOrCreateModuleProduct(type: string) {
       proration_behavior: 'create_prorations',
       payment_settings: { save_default_payment_method: 'on_subscription' },
       expand: ['latest_invoice.payment_intent'],
-    });
-  }
-  
-  export async function addItemToSubscription(subscriptionId: string, priceId: string) {
-    return stripe.subscriptionItems.create({
-      subscription: subscriptionId,
-      price: priceId,
-      quantity: 1,
-      proration_behavior: 'create_prorations',
     });
   }
   
@@ -223,6 +211,7 @@ export async function addVideoToSubscription(subscriptionId: string, priceId: st
     
     return stripe.invoiceItems.create({
         customer: subscription.customer as string,
+        subscription: subscriptionId,
         price: priceId,
         quantity: 1,
     });
@@ -260,10 +249,7 @@ export async function createPortalSession(customerId: string, returnUrl: string)
 export async function getCustomerDefaultPaymentMethod(customerId: string): Promise<string | null> {
     console.log(`Attempting to get default payment method for customer: ${customerId}`);
     try {
-      const paymentMethods = await stripe.paymentMethods.list({
-        customer: customerId,
-        type: 'card',
-      });
+      const paymentMethods = await getStripeCustomerPaymentMethods(customerId);
   
       console.log(`Found ${paymentMethods.data.length} payment methods for customer`);
   
@@ -317,56 +303,21 @@ export async function getCustomerDefaultPaymentMethod(customerId: string): Promi
     }
   }
   
-//   export async function createImmediatePurchase(customerId: string, priceId: string, videoId: string, videoTitle: string): Promise<{ paymentIntent: Stripe.PaymentIntent, invoice: Stripe.Invoice }> {
-//     try {
-//       const paymentMethodId = await getCustomerDefaultPaymentMethod(customerId);
-  
-//       if (!paymentMethodId) {
-//         throw new Error('No payment method found for customer');
-//       }
-  
-//       const price = await stripe.prices.retrieve(priceId);
-  
-//       // Create a PaymentIntent
-//       const paymentIntent = await stripe.paymentIntents.create({
-//         amount: price.unit_amount!,
-//         currency: price.currency,
-//         customer: customerId,
-//         payment_method: paymentMethodId,
-//         off_session: true,
-//         confirm: true,
-//         metadata: { videoId: videoId },
-//       });
-  
-//       // If payment is successful, create an invoice
-//       if (paymentIntent.status === 'succeeded') {
-//         const invoice = await stripe.invoices.create({
-//           customer: customerId,
-//           auto_advance: false, // Draft invoice
-//         });
-  
-//         // Add invoice item
-//         await stripe.invoiceItems.create({
-//           customer: customerId,
-//           price: priceId,
-//           invoice: invoice.id,
-//           description: `Purchase of "${videoTitle}"`,
-//         });
-  
-//         // Finalize and pay the invoice
-//         const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
-//         const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id);
-  
-//         // Send the invoice (receipt) by email
-//         await stripe.invoices.sendInvoice(paidInvoice.id);
-  
-//         return { paymentIntent, invoice: paidInvoice };
-//       } else {
-//         throw new Error('Payment failed');
-//       }
-//     } catch (error) {
-//       console.error('Error creating immediate purchase:', error);
-//       throw error;
-//     }
-//   }
+
+// Webhook functions
+export async function constructStripeEvent(
+  buffer: Buffer,
+  signature: string
+): Promise<Stripe.Event> {
+  return stripe.webhooks.constructEvent(
+    buffer, signature, STRIPE_WEBHOOK_SECRET as string);
+}
+
+export async function getStripeCustomerPaymentMethods(customerId: string): Promise<Stripe.Response<Stripe.ApiList<Stripe.PaymentMethod>>> {
+  return stripe.paymentMethods.list({
+    customer: customerId,
+    // Optionally filter for card only, but can be others too!
+    //type: 'card',
+  });
+}
   

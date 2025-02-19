@@ -2,10 +2,7 @@ import { buffer } from 'micro';
 import Stripe from 'stripe';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getDb } from '../../lib/db';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-08-16',
-});
+import { constructStripeEvent, getStripeCustomerPaymentMethods } from '../../lib/stripe';
 
 export const config = {
   api: {
@@ -25,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+      event = await constructStripeEvent(buf, sig);
       console.log('Webhook verified');
     } catch (err: any) {
       console.error(`Webhook Error: ${err.message}`);
@@ -82,10 +79,7 @@ async function handlePaymentMethodAttached(db: any, paymentMethod: Stripe.Paymen
 
 async function handlePaymentMethodDetached(db: any, paymentMethod: Stripe.PaymentMethod) {
   // Check if the customer has any remaining payment methods
-  const remainingPaymentMethods = await stripe.paymentMethods.list({
-    customer: paymentMethod.customer as string,
-    type: 'card',
-  });
+  const remainingPaymentMethods = await getStripeCustomerPaymentMethods(paymentMethod.customer as string);
 
   if (remainingPaymentMethods.data.length === 0) {
     await db.run('UPDATE users SET hasPaymentMethod = ? WHERE stripeCustomerId = ?', [false, paymentMethod.customer]);
